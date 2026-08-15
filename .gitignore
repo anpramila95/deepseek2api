@@ -1,8 +1,39 @@
+# Dependencies and local environment
 node_modules/
 .env
+.env.*
+!.env.example
+
+# Runtime state and local databases
+data/*
+!data/.gitkeep
+*.db
+*.sqlite
+*.sqlite3
+
+# Browser and test artifacts
+/.playwright-cli/
+/.playwright-mcp/
+output/
+coverage/
+playwright-report/
+test-results/
+*.har
+
+# Caches, logs, and temporary files
 .cache/
-.playwright-mcp/
-data/app.json
-data/*.log
+.tmp/
+tmp/
+temp/
+*.cache
+*.log
+*.tmp
+*.bak
+
+# Generated releases
+dist/
 release/
+
+# OS metadata
+.DS_Store
 Thumbs.db
