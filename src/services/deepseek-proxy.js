@@ -1,6 +1,12 @@
 import { config, resolveDeepseekApiPath } from "../config.js";
+import { createSafeUpstreamError } from "../utils/privacy.js";
 import { solvePowChallenge } from "./pow-solver.js";
 import { createBaseHeaders, refreshAccountToken } from "./deepseek-auth.js";
+import {
+  classifyProtocolResponse,
+  createProtocolRequestContext,
+  resolveRetryAfterMs
+} from "./deepseek-protocol.js";
 import {
   attachShumeiVerificationToBody,
   inspectResponseForCaptcha
@@ -30,9 +36,13 @@ function isFreshChallenge(challenge) {
 }
 
 async function fetchPowChallenge(account, path) {
+  const requestContext = createProtocolRequestContext(account, "/chat/create_pow_challenge");
   const response = await fetch(`${config.deepseekBaseUrl}${resolveDeepseekApiPath("/chat/create_pow_challenge")}`, {
     method: "POST",
-    headers: createBaseHeaders(account.token, { "content-type": "application/json" }),
+    headers: createBaseHeaders(account.token, {
+      ...requestContext.headers,
+      "content-type": "application/json"
+    }, requestContext.profile),
     body: JSON.stringify({ target_path: path })
   });
 
@@ -42,12 +52,10 @@ async function fetchPowChallenge(account, path) {
     responseText = await response.text();
     payload = JSON.parse(responseText);
   } catch {
-    const preview = responseText ? responseText.slice(0, 500) : "(empty body)";
-    throw new Error(
-      `PoW challenge request failed (HTTP ${response.status}): unable to parse response. ` +
-      `This may indicate network connectivity issues to chat.deepseek.com\n` +
-      `Response body preview: ${preview}`
-    );
+    throw createSafeUpstreamError("PoW challenge request failed: unable to parse upstream response", {
+      status: response.status,
+      body: responseText
+    });
   }
   const challenge = payload?.data?.biz_data?.challenge;
   if (!response.ok || payload?.data?.biz_code !== 0 || !challenge) {
@@ -113,7 +121,11 @@ async function createPowHeader(account, path) {
 
 async function performRequest({ account, method, path, query, body, headers }) {
   const targetPath = resolveDeepseekApiPath(path);
-  const finalHeaders = createBaseHeaders(account.token, headers);
+  const requestContext = createProtocolRequestContext(account, targetPath);
+  const finalHeaders = createBaseHeaders(account.token, {
+    ...requestContext.headers,
+    ...headers
+  }, requestContext.profile);
 
   if (config.powProtectedPaths.has(targetPath)) {
     finalHeaders["X-DS-PoW-Response"] = await createPowHeader(account, targetPath);
@@ -146,15 +158,30 @@ async function maybeRefreshAccount(response, account) {
       // Response body truncated or malformed — treat as non-refreshable
     }
   }
+  const classification = classifyProtocolResponse({
+    status: response.status,
+    payload,
+    headers: response.headers
+  });
   const bizCode = payload?.data?.biz_code ?? payload?.code;
-  const shouldRefresh = bizCode === 40002 || bizCode === 40003;
+  const shouldRefresh = classification.kind === "auth"
+    || bizCode === 40002
+    || bizCode === 40003;
 
   if (!shouldRefresh) {
+    const responseHeaders = new Headers(response.headers);
+    if (classification.kind === "rate_limit") {
+      responseHeaders.set(
+        "x-deepseek-retry-after-ms",
+        String(resolveRetryAfterMs(response.headers, 0))
+      );
+    }
     return {
       refreshedAccount: account,
       response: new Response(buffer, {
-        headers: response.headers,
-        status: response.status
+        headers: responseHeaders,
+        status: response.status,
+        statusText: response.statusText
       })
     };
   }

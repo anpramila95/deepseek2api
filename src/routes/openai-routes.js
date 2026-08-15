@@ -1,4 +1,4 @@
-import { getApiKeyRecord } from "../services/api-key-service.js";
+import { getApiKeyRecord, recordApiKeyUsage } from "../services/api-key-service.js";
 import { takeRoundRobinAccount } from "../services/account-rotation-service.js";
 import { isIncognitoEnabledForOwner } from "../services/incognito-service.js";
 import { collectOpenAiResponse, streamOpenAiResponse } from "../services/openai-bridge.js";
@@ -80,6 +80,7 @@ async function handleChatCompletionsRequest(request, response, apiKeyRecord) {
           account,
           body,
           deleteAfterFinish,
+          ownerId: apiKeyRecord.ownerId,
           toolCallsEnabled: apiKeyRecord.toolCallsEnabled
         });
         recordRequestLog({
@@ -98,6 +99,7 @@ async function handleChatCompletionsRequest(request, response, apiKeyRecord) {
         account,
         body,
         deleteAfterFinish,
+        ownerId: apiKeyRecord.ownerId,
         toolCallsEnabled: apiKeyRecord.toolCallsEnabled
       });
       sendJson(response, 200, payload);
@@ -137,11 +139,13 @@ export async function handleOpenAiRequest(request, response, url) {
 
   try {
     if (request.method === "GET" && isModelsPath(url.pathname)) {
+      recordApiKeyUsage(apiKeyRecord.id);
       await handleModelsRequest(response, apiKeyRecord);
       return true;
     }
 
     if (request.method === "POST" && isChatCompletionsPath(url.pathname)) {
+      recordApiKeyUsage(apiKeyRecord.id);
       await handleChatCompletionsRequest(request, response, apiKeyRecord);
       return true;
     }

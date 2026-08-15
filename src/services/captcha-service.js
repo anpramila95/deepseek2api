@@ -1,9 +1,13 @@
+import { randomUUID } from "node:crypto";
+
+import { config } from "../config.js";
 import { getAccountById, listUsableAccounts, updateAccountById } from "./account-service.js";
+import {
+  createDeepseekClientHeaders,
+  resolveDeepseekClientProfile
+} from "./deepseek-device.js";
 import { getInternalSystemSettings } from "./system-settings-service.js";
 
-const SHUMEI_CAPTCHA_ORGANIZATION = "P9usCUBauxft8eAmUXaZ";
-const SHUMEI_CAPTCHA_BASE_URL = "https://captcha1.fengkongcloud.cn";
-const SHUMEI_ASSET_BASE_URL = "https://castatic.fengkongcloud.cn";
 const CAPTCHA_TERMS = /captcha|hcaptcha|shumei|verification|verify|risk|验证码|数美|风控|验证/i;
 const JSON_CONTENT_TYPES = ["application/json", "text/json"];
 const DEFAULT_CAPTCHA_STATE = Object.freeze({
@@ -105,7 +109,7 @@ function normalizeImageUrl(value, detail = {}) {
     const domain = Array.isArray(detail.domains) && detail.domains.length
       ? detail.domains[0]
       : "";
-    return domain ? `https://${domain}${raw}` : `${SHUMEI_ASSET_BASE_URL}${raw}`;
+    return domain ? `https://${domain}${raw}` : `${config.shumei.captchaAssetBaseUrl}${raw}`;
   }
 
   return raw;
@@ -323,6 +327,9 @@ async function solveWithYesCaptcha(challenge, settings) {
 
   const endpoint = normalizeYesCaptchaEndpoint(settings.yescaptchaEndpoint);
   const body = await downloadImageAsBase64(challenge.imageUrl);
+
+  const comment = `${challenge.instruction || "请识别点选验证码目标"}，只返回点击坐标，格式 x,y`;
+
   const createResult = await fetchJson(`${endpoint}/createTask`, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -331,7 +338,7 @@ async function solveWithYesCaptcha(challenge, settings) {
       task: {
         type: "ImageToTextTask",
         body,
-        comment: `${challenge.instruction || "请识别点选验证码目标"}，只返回点击坐标，格式 x,y`
+        comment
       }
     })
   });
@@ -445,19 +452,27 @@ function selectVisionFallbackAccount(sourceAccount, settings) {
   return accounts[0] ?? null;
 }
 
-async function submitShumeiCoordinates(challenge, coordinates) {
+async function submitShumeiCoordinates(challenge, coordinates, account = null) {
   if (!coordinates?.length) {
     throw new Error("缺少验证码坐标");
   }
 
+  const profile = resolveDeepseekClientProfile(account ?? {});
+  const origin = new URL(config.deepseekBaseUrl).origin;
+  const channel = profile.source || "chat-web";
+  const appId = profile.bundleId || "com.deepseek.chat";
+  const sdkver = profile.clientVersion || "web";
+  const rversion = config.deepseekApiVersion;
+  const lang = profile.locale || "zh_CN";
+
   const payload = new URLSearchParams({
-    organization: SHUMEI_CAPTCHA_ORGANIZATION,
+    organization: config.shumei.organization,
     model: "spatial_select",
-    lang: "zh-cn",
-    appId: "default",
-    channel: "default",
-    rversion: "1.0.4",
-    sdkver: "1.1.3",
+    lang,
+    appId,
+    channel,
+    rversion,
+    sdkver,
     rid: challenge.rid || "",
     captchaUuid: challenge.captchaUuid || "",
     data: JSON.stringify({
@@ -467,11 +482,19 @@ async function submitShumeiCoordinates(challenge, coordinates) {
       select: coordinates
     })
   });
-  const result = await fetchJson(`${SHUMEI_CAPTCHA_BASE_URL}/ca/v1/fverify`, {
+
+  const headers = {
+    ...createDeepseekClientHeaders(profile),
+    "content-type": "application/x-www-form-urlencoded;charset=UTF-8",
+    "x-request-id": `DS-${randomUUID()}`,
+    "x-trace-id": randomUUID(),
+    referer: `${origin}/`,
+    origin
+  };
+
+  const result = await fetchJson(`${config.shumei.captchaBaseUrl}/ca/v1/fverify`, {
     method: "POST",
-    headers: {
-      "content-type": "application/x-www-form-urlencoded;charset=UTF-8"
-    },
+    headers,
     body: payload
   });
   const pass = Boolean(
@@ -521,7 +544,11 @@ export async function attemptCaptchaAutoSolveForAccount(account, { force = false
   if (settings.yescaptchaKey) {
     try {
       const solution = await solveWithYesCaptcha(challenge, settings);
-      const verification = await submitShumeiCoordinates(challenge, solution.coordinates);
+      const verification = await submitShumeiCoordinates(
+        challenge,
+        solution.coordinates,
+        attemptedAccount
+      );
       return {
         account: markCaptchaSolved(attemptedAccount, {
           coordinates: solution.coordinates,
@@ -542,7 +569,7 @@ export async function attemptCaptchaAutoSolveForAccount(account, { force = false
     if (visionAccount) {
       try {
         const solution = await solveWithVision(challenge, visionAccount);
-        const verification = await submitShumeiCoordinates(challenge, solution.coordinates);
+        const verification = await submitShumeiCoordinates(challenge, solution.coordinates, attemptedAccount);
         return {
           account: markCaptchaSolved(attemptedAccount, {
             coordinates: solution.coordinates,
@@ -572,7 +599,7 @@ export async function resolveCaptchaManually(account, body = {}) {
   let rid = typeof body.rid === "string" ? body.rid.trim() : "";
 
   if (!rid && coordinates.length) {
-    const verification = await submitShumeiCoordinates(latestAccount.captchaState ?? {}, coordinates);
+    const verification = await submitShumeiCoordinates(latestAccount.captchaState ?? {}, coordinates, latestAccount);
     rid = verification.rid ?? "";
   }
 

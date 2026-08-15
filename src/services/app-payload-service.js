@@ -1,20 +1,25 @@
 import { config } from "../config.js";
 import { listApiKeysForOwner } from "./api-key-service.js";
+import { getChainOfThoughtOverrideState } from "./chain-of-thought-override-service.js";
 import { getSessionIncognitoState, getVisibleAccounts } from "./auth-service.js";
 import { listPublicInvites } from "./invite-service.js";
 import { getRegistrationSettings } from "./registration-service.js";
 import { buildSharedAccountModePayload } from "./shared-account-mode-service.js";
 import { getPublicSystemSettings } from "./system-settings-service.js";
 import { listPublicUsers } from "./user-service.js";
+import { maskIdentifier } from "../utils/privacy.js";
 
 export function toPublicAccount(account) {
+  const loginValue = account.loginValueMasked || maskIdentifier(account.loginValue);
+
   return {
     id: account.id,
     ownerId: account.ownerId,
-    loginValue: account.loginValue,
-    displayName: account.displayName,
-    emailMasked: account.emailMasked,
-    mobileMasked: account.mobileMasked,
+    loginValue,
+    displayName: account.displayName || loginValue,
+    emailMasked: maskIdentifier(account.emailMasked),
+    mobileMasked: maskIdentifier(account.mobileMasked),
+    credentialMode: account.credentialMode ?? "legacy",
     status: account.status ?? (account.token ? "online" : "offline"),
     settingsReported: Boolean(account.settingsReported),
     lastSettingsReport: account.lastSettingsReport ?? null,
@@ -33,6 +38,16 @@ function toIncognitoPayload(session) {
     ownerEnabled: state.ownerEnabled,
     scope,
     scopeEnabled: scope === "global" ? state.globalEnabled : state.ownerEnabled
+  };
+}
+
+function toChainOfThoughtOverridePayload(session) {
+  const state = getChainOfThoughtOverrideState(session.ownerId);
+
+  return {
+    ...state,
+    scope: "self",
+    scopeEnabled: state.ownerEnabled
   };
 }
 
@@ -56,6 +71,7 @@ export function buildSessionPayload(session) {
     adminEnabled: config.admin.enabled,
     registration: getRegistrationSettings(),
     systemSettings: getPublicSystemSettings(),
+    chainOfThoughtOverride: toChainOfThoughtOverridePayload(session),
     incognito: toIncognitoPayload(session),
     sharedAccountMode: buildSharedAccountModePayload(session)
   };

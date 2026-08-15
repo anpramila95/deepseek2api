@@ -222,17 +222,20 @@ function injectToolPrompt(messages, tools, policy) {
     return messages;
   }
 
-  const systemIndex = messages.findIndex((message) => message.role === "system");
-  if (systemIndex === -1) {
-    return [{ role: "system", content: toolPrompt }, ...messages];
+  let userIndex = -1;
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    if (messages[index].role === "user") {
+      userIndex = index;
+      break;
+    }
   }
 
-  const updated = [...messages];
-  updated[systemIndex] = {
-    ...updated[systemIndex],
-    content: [updated[systemIndex].content, toolPrompt].filter(Boolean).join("\n\n")
-  };
-  return updated;
+  const insertionIndex = userIndex === -1 ? messages.length : userIndex;
+  return [
+    ...messages.slice(0, insertionIndex),
+    { role: "system", content: toolPrompt },
+    ...messages.slice(insertionIndex)
+  ];
 }
 
 export function buildOpenAiPrompt({ messages, toolChoice, tools }) {

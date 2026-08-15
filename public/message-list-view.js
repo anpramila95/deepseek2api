@@ -77,13 +77,13 @@ function isNearBottom(container) {
 }
 
 function createSectionElement(kind) {
-  const sectionElement = document.createElement("div");
+  const sectionElement = document.createElement(kind === "thinking" ? "details" : "div");
   sectionElement.className = `message-section ${kind}`;
   sectionElement.dataset.messageSection = "true";
   sectionElement.dataset.sectionKind = kind;
 
   if (kind === "thinking") {
-    const labelElement = document.createElement("div");
+    const labelElement = document.createElement("summary");
     labelElement.className = "message-label";
     labelElement.textContent = "THINKING";
     sectionElement.appendChild(labelElement);

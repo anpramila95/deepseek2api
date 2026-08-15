@@ -4,6 +4,8 @@ import { getIncognitoStateForOwner } from "./incognito-service.js";
 import { isLocalOwnerId, createLocalOwnerId } from "./owner-service.js";
 import { createSession, deleteSession, getSession } from "./session-service.js";
 import { authenticateLocalUser, getLocalUserFromSession, registerLocalUser } from "./user-service.js";
+import { maskIdentifier } from "../utils/privacy.js";
+import { resolveDeepseekClientProfile } from "./deepseek-device.js";
 
 export function resolveSession(request) {
   const cookie = request.cookies?.[config.sessionCookieName];
@@ -71,19 +73,27 @@ function createLocalUserSession(user) {
   });
 }
 
-function buildAccountRecord({ deviceId, loginResult, loginValue, ownerId, password }) {
+function buildAccountRecord({ deviceId, deviceProfile, loginResult, loginValue, ownerId, password }) {
   const user = loginResult.data.biz_data.user;
-  const emailMasked = user.email ?? "";
-  const mobileMasked = user.mobile_number ?? "";
+  const emailMasked = maskIdentifier(user.email ?? loginValue);
+  const mobileMasked = maskIdentifier(user.mobile_number ?? "");
+  const loginValueMasked = maskIdentifier(loginValue);
+  const resolvedProfile = resolveDeepseekClientProfile(deviceProfile ?? { deviceId });
+  const credentialPatch = config.security.persistAccountCredentials
+    ? { credentialMode: "persistent", loginValue, password }
+    : { credentialMode: "ephemeral", loginValue: loginValueMasked, password: "" };
 
   return saveAccount({
     ownerId,
     deepseekUserId: user.id,
-    loginValue,
-    password,
-    deviceId,
+    ...credentialPatch,
+    loginValueMasked,
+    deviceId: resolvedProfile.loginDeviceId,
+    loginDeviceId: resolvedProfile.loginDeviceId,
+    clientDid: resolvedProfile.clientDid,
+    deviceProfile: resolvedProfile,
     token: user.token,
-    displayName: resolveAccountLabel({ emailMasked, loginValue, mobileMasked }),
+    displayName: resolveAccountLabel({ emailMasked, loginValue: loginValueMasked, mobileMasked }),
     emailMasked,
     mobileMasked,
     areaCode: user.area_code ?? "+86",

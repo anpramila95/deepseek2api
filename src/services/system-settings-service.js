@@ -2,7 +2,25 @@ import { config } from "../config.js";
 import { readStore, updateStore } from "../storage/store.js";
 
 function normalizeBoolean(value, fallback) {
-  return value === undefined ? fallback : Boolean(value);
+  if (value === undefined) {
+    return fallback;
+  }
+
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (["false", "0", "off", "no"].includes(normalized)) {
+      return false;
+    }
+    if (["true", "1", "on", "yes"].includes(normalized)) {
+      return true;
+    }
+  }
+
+  return Boolean(value);
+}
+
+function firstDefined(...values) {
+  return values.find((value) => value !== undefined && value !== null);
 }
 
 function normalizePositiveInteger(value, fallback, min, max) {
@@ -78,9 +96,21 @@ function resolveCaptchaSettings(storedCaptcha = {}, { includeSecret = false } = 
 
 export function getSystemSettings(options = {}) {
   const stored = readStore().systemSettings ?? {};
+  const storedOverrideEnabled = firstDefined(
+    stored.chainOfThoughtOverrideEnabled,
+    stored.expertPromptSuffixEnabled,
+    stored.expertModePromptSuffixEnabled,
+    stored.prompt?.chainOfThoughtOverrideEnabled,
+    stored.prompt?.expertPromptSuffixEnabled,
+    stored.prompt?.expertModePromptSuffixEnabled
+  );
 
   return {
-    captcha: resolveCaptchaSettings(stored.captcha, options)
+    captcha: resolveCaptchaSettings(stored.captcha, options),
+    chainOfThoughtOverrideEnabled: normalizeBoolean(
+      storedOverrideEnabled,
+      config.chainOfThoughtOverrideEnabled
+    )
   };
 }
 
@@ -94,6 +124,17 @@ export function getInternalSystemSettings() {
 
 export function updateSystemSettings(patch = {}) {
   const nextCaptchaPatch = patch.captcha ? normalizeCaptchaPatch(patch.captcha) : {};
+  const nextOverrideEnabled = firstDefined(
+    patch.chainOfThoughtOverrideEnabled,
+    patch.expertPromptSuffixEnabled,
+    patch.expertModePromptSuffixEnabled,
+    patch.prompt?.chainOfThoughtOverrideEnabled,
+    patch.prompt?.expertPromptSuffixEnabled,
+    patch.prompt?.expertModePromptSuffixEnabled
+  );
+  const nextOverridePatch = nextOverrideEnabled === undefined
+    ? {}
+    : { chainOfThoughtOverrideEnabled: normalizeBoolean(nextOverrideEnabled, false) };
 
   updateStore((state) => ({
     ...state,
@@ -102,7 +143,8 @@ export function updateSystemSettings(patch = {}) {
       captcha: {
         ...(state.systemSettings?.captcha ?? {}),
         ...nextCaptchaPatch
-      }
+      },
+      ...nextOverridePatch
     }
   }));
 

@@ -1,252 +1,251 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-CN">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#071120">
-    <title>DeepSeek 协议控制台</title>
+    <meta name="theme-color" content="#11130f">
+    <title>DeepSeek2API 本地网关</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="/theme.css?v=20260411-3">
-    <link rel="stylesheet" href="/styles.css?v=20260411-3">
-    <link rel="stylesheet" href="/auth.css?v=20260411-3">
-    <link rel="stylesheet" href="/navigation.css?v=20260411-3">
-    <link rel="stylesheet" href="/dashboard.css?v=20260411-3">
-    <link rel="stylesheet" href="/settings.css?v=20260411-3">
-    <link rel="stylesheet" href="/chat.css?v=20260411-3">
-    <link rel="stylesheet" href="/responsive.css?v=20260411-3">
+    <link rel="stylesheet" href="/app.css?v=20260729-1">
   </head>
-  <body data-theme="starry">
+  <body data-theme="starry" data-active-tab="dashboard">
     <div class="app-shell">
-      <section id="login-view" class="login-shell">
-        <div class="login-panel surface-card reveal">
-          <div class="login-header">
-            <div class="login-brand">
-              <span class="eyebrow">Console</span>
-              <h1>DeepSeek 协议控制台</h1>
+      <section id="login-view" class="login-screen">
+        <div class="login-grid">
+          <header class="bento-panel panel-paper login-top" data-motion>
+            <div class="brand-lockup">
+              <span class="brand-symbol">DS</span>
+              <div>
+                <strong>DeepSeek2API</strong>
+                <span>Local gateway</span>
+              </div>
             </div>
-            <div class="theme-dock surface-card" aria-label="主题切换">
-              <span class="eyebrow">Theme</span>
+            <div class="theme-switch" aria-label="主题切换">
+              <span class="panel-label">Theme</span>
               <div class="segmented-control">
                 <button type="button" class="theme-option" data-theme-option="starry" data-ripple>星空</button>
                 <button type="button" class="theme-option" data-theme-option="ocean" data-ripple>海洋</button>
               </div>
             </div>
-          </div>
-          <div class="login-body">
-            <div class="login-copy">
-              <p class="muted login-intro">统一处理登录、账号、密钥和管理操作。</p>
-              <div class="feature-list">
-                <article class="feature-card"><strong>本地登录</strong><span>登录与注册分区展示</span></article>
-                <article class="feature-card"><strong>邀请码</strong><span>生成、删除、批量处理</span></article>
-                <article class="feature-card"><strong>用户管理</strong><span>启用、禁用、删除、限流</span></article>
-                <article class="feature-card"><strong>工作区</strong><span>聊天、账号、密钥、代理统一入口</span></article>
-              </div>
+          </header>
+
+          <section class="bento-panel panel-paper login-intro" data-motion>
+            <div class="intro-route" aria-label="OpenAI 到 DeepSeek 协议桥接">
+              <span>OPENAI</span><i data-lucide="arrow-right"></i><span>DEEPSEEK</span>
             </div>
-            <div class="auth-panel surface-inset">
-              <div class="auth-tab-bar" role="tablist" aria-label="登录与注册">
-                <button type="button" class="auth-tab-btn active" data-auth-tab="login" aria-selected="true" data-ripple>登录</button>
-                <button type="button" class="auth-tab-btn" data-auth-tab="register" aria-selected="false" data-ripple>注册</button>
-              </div>
-              <div id="auth-pane-login" class="auth-tab-pane">
-                <section class="auth-card">
-                  <div class="auth-header">
-                    <span class="eyebrow">Login</span>
-                    <h2>登录</h2>
-                    <p class="muted">管理员和本地用户共用此入口。</p>
-                  </div>
-                  <form id="login-form" class="auth-form">
-                    <div class="input-group"><label for="login-username">账号</label><input id="login-username" placeholder="输入账号" autocomplete="username"></div>
-                    <div class="input-group"><label for="login-password">密码</label><input id="login-password" type="password" placeholder="输入密码" autocomplete="current-password"></div>
-                    <button type="submit" class="button-primary auth-submit" data-ripple>登录</button>
-                  </form>
-                  <pre id="login-status" class="status hidden"></pre>
-                </section>
-              </div>
-              <div id="auth-pane-register" class="auth-tab-pane hidden">
-                <section class="auth-card">
-                  <div class="auth-header">
-                    <span class="eyebrow">Register</span>
-                    <h2>注册</h2>
-                    <p id="admin-register-hint" class="muted">当前可直接注册。</p>
-                  </div>
-                  <form id="register-form" class="auth-form">
-                    <div class="input-group"><label for="register-username">账号</label><input id="register-username" placeholder="设置账号" autocomplete="username"></div>
-                    <div class="input-group"><label for="register-password">密码</label><input id="register-password" type="password" placeholder="设置密码" autocomplete="new-password"></div>
-                    <div id="register-invite-group" class="input-group hidden"><label for="register-invite-code">邀请码</label><input id="register-invite-code" placeholder="输入邀请码"></div>
-                    <button type="submit" class="button-secondary auth-submit" data-ripple>注册并进入</button>
-                  </form>
-                  <pre id="register-status" class="status hidden"></pre>
-                </section>
-              </div>
+            <div>
+              <span class="panel-label">Local AI gateway</span>
+              <h1>DeepSeek2API</h1>
+              <p>统一管理账号、会话与兼容接口。</p>
             </div>
-          </div>
-          <p class="login-footer muted">本地账号登录后即可进入统一工作区。</p>
+          </section>
+
+          <figure class="bento-panel login-visual" data-motion>
+            <img class="visual-image visual-starry" src="/images/themes/starry_sky/bg_1.png" alt="星空协议节点背景">
+            <img class="visual-image visual-ocean" src="/images/themes/ocean/bg_1.png" alt="海洋协议节点背景">
+            <figcaption>
+              <span>PROTOCOL RELAY</span>
+              <strong>v0</strong>
+            </figcaption>
+            <div class="visual-node node-a"></div>
+            <div class="visual-node node-b"></div>
+            <div class="visual-link"></div>
+          </figure>
+
+          <section class="bento-panel panel-dark login-auth" data-motion>
+            <div class="auth-tab-bar" role="tablist" aria-label="登录与注册">
+              <button type="button" class="auth-tab-btn active" data-auth-tab="login" aria-selected="true" data-ripple>登录</button>
+              <button type="button" class="auth-tab-btn" data-auth-tab="register" aria-selected="false" data-ripple>注册</button>
+            </div>
+
+            <div id="auth-pane-login" class="auth-tab-pane">
+              <div class="auth-heading">
+                <span class="panel-label">Welcome back</span>
+                <h2>进入工作区</h2>
+              </div>
+              <form id="login-form" class="auth-form">
+                <label class="input-group"><span>账号</span><input id="login-username" placeholder="输入账号" autocomplete="username"></label>
+                <label class="input-group"><span>密码</span><input id="login-password" type="password" placeholder="输入密码" autocomplete="current-password"></label>
+                <button type="submit" class="button-primary wide-command" data-ripple><span>登录</span><i data-lucide="arrow-up-right"></i></button>
+              </form>
+              <pre id="login-status" class="status hidden"></pre>
+            </div>
+
+            <div id="auth-pane-register" class="auth-tab-pane hidden">
+              <div class="auth-heading">
+                <span class="panel-label">New workspace</span>
+                <h2>创建本地用户</h2>
+                <p id="admin-register-hint" class="muted">当前可直接注册。</p>
+              </div>
+              <form id="register-form" class="auth-form">
+                <label class="input-group"><span>账号</span><input id="register-username" placeholder="设置账号" autocomplete="username"></label>
+                <label class="input-group"><span>密码</span><input id="register-password" type="password" placeholder="设置密码" autocomplete="new-password"></label>
+                <label id="register-invite-group" class="input-group hidden"><span>邀请码</span><input id="register-invite-code" placeholder="输入邀请码"></label>
+                <button type="submit" class="button-primary wide-command" data-ripple><span>注册并进入</span><i data-lucide="arrow-up-right"></i></button>
+              </form>
+              <pre id="register-status" class="status hidden"></pre>
+            </div>
+          </section>
+
+          <section class="bento-panel panel-paper login-security" data-motion>
+            <div class="panel-heading-inline">
+              <span class="panel-label">Privacy default</span>
+              <i data-lucide="shield-check"></i>
+            </div>
+            <p>密码默认不落盘，API Key 仅保存哈希。</p>
+            <div class="security-meter"><span></span><span></span><span></span><span></span></div>
+          </section>
+
+          <section class="bento-panel panel-accent login-capabilities" data-motion>
+            <span class="panel-label">Workspace</span>
+            <ul class="capability-list">
+              <li><span>兼容接口</span><i data-lucide="arrow-up-right"></i></li>
+              <li><span>账号池</span><i data-lucide="arrow-up-right"></i></li>
+              <li><span>请求日志</span><i data-lucide="arrow-up-right"></i></li>
+              <li><span>本地用户</span><i data-lucide="arrow-up-right"></i></li>
+            </ul>
+          </section>
+
+          <footer class="bento-panel panel-paper login-footer" data-motion>
+            <span>NODE NATIVE</span><span>LOCAL FIRST</span><span>OPENAI COMPATIBLE</span>
+          </footer>
         </div>
       </section>
-      <section id="app-view" class="dashboard hidden">
-        <nav class="nav-rail surface-card reveal" aria-label="主导航">
-          <div class="nav-brand">
-            <span class="nav-brand-dot"></span>
-            <div class="nav-brand-copy">
-              <span class="eyebrow">Workspace</span>
-              <span class="nav-brand-name">DeepSeek2API</span>
+
+      <section id="app-view" class="workspace hidden">
+        <header class="bento-panel panel-paper workspace-top" data-motion>
+          <div class="brand-lockup compact-brand">
+            <span class="brand-symbol">DS</span>
+            <div><strong>DeepSeek2API</strong><span>Console</span></div>
+          </div>
+
+          <nav class="desktop-nav" aria-label="主导航">
+            <button type="button" class="nav-item active" data-tab="dashboard" aria-label="仪表盘" data-ripple><i data-lucide="layout-dashboard"></i><span>概览</span></button>
+            <button type="button" class="nav-item" data-tab="chat" aria-label="聊天" data-ripple><i data-lucide="message-square"></i><span>聊天</span></button>
+            <button type="button" class="nav-item" data-tab="accounts" aria-label="账号管理" data-ripple><i data-lucide="users"></i><span>账号</span></button>
+            <button type="button" class="nav-item" data-tab="keys" aria-label="API Key" data-ripple><i data-lucide="key-round"></i><span>密钥</span></button>
+            <button type="button" class="nav-item" data-tab="explorer" aria-label="请求日志" data-ripple><i data-lucide="scroll-text"></i><span>日志</span></button>
+            <button type="button" class="nav-item hidden" data-tab="settings" data-admin-only="true" aria-label="系统设置" data-ripple><i data-lucide="settings-2"></i><span>设置</span></button>
+            <button type="button" class="nav-item hidden" data-tab="admin" data-admin-only="true" aria-label="用户管理" data-ripple><i data-lucide="user-cog"></i><span>用户</span></button>
+          </nav>
+
+          <div class="workspace-actions">
+            <div class="theme-switch compact-theme" aria-label="主题切换">
+              <button type="button" class="theme-option" data-theme-option="starry" title="星空主题" aria-label="星空主题"><i data-lucide="moon-star"></i></button>
+              <button type="button" class="theme-option" data-theme-option="ocean" title="海洋主题" aria-label="海洋主题"><i data-lucide="waves"></i></button>
             </div>
+            <div class="identity-copy"><span id="role-label">未登录</span><strong id="user-summary"></strong></div>
+            <button id="logout-button" type="button" class="icon-button" title="退出登录" aria-label="退出登录" data-ripple><i data-lucide="log-out"></i></button>
           </div>
-          <div class="nav-items">
-            <button type="button" class="nav-item active" data-tab="dashboard" aria-label="仪表盘" data-ripple>
-              <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19h16M7 16V9m5 7V5m5 11v-4" /></svg></span>
-              <span class="nav-label">仪表盘</span>
-            </button>
-            <button type="button" class="nav-item" data-tab="chat" aria-label="聊天" data-ripple>
-              <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 6h14v9H8l-3 3V6Z" /></svg></span>
-              <span class="nav-label">聊天</span>
-            </button>
-            <button type="button" class="nav-item" data-tab="accounts" aria-label="账号管理" data-ripple>
-              <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm7 8a7 7 0 0 0-14 0" /></svg></span>
-              <span class="nav-label">账号管理</span>
-            </button>
-            <button type="button" class="nav-item" data-tab="keys" aria-label="API Key" data-ripple>
-              <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14 10a4 4 0 1 0-2.8 3.82L9 16h3v3h3v-3l3-3-1-1" /></svg></span>
-              <span class="nav-label">API Key</span>
-            </button>
-            <button type="button" class="nav-item" data-tab="explorer" aria-label="请求日志" data-ripple>
-              <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 4h12v16H6zM9 8h6M9 12h6M9 16h4" /></svg></span>
-              <span class="nav-label">请求日志</span>
-            </button>
-            <button type="button" class="nav-item hidden" data-tab="settings" data-admin-only="true" aria-label="系统设置" data-ripple>
-              <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm0-5v3m0 12v3M4.2 4.2l2.1 2.1m11.4 11.4 2.1 2.1M3 12h3m12 0h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1" /></svg></span>
-              <span class="nav-label">系统设置</span>
-            </button>
-            <button type="button" class="nav-item hidden" data-tab="admin" data-admin-only="true" aria-label="用户管理" data-ripple>
-              <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm8 2a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM3 20a5 5 0 0 1 10 0m3 0a4 4 0 0 0-4-4" /></svg></span>
-              <span class="nav-label">用户管理</span>
-            </button>
-          </div>
-          <div class="nav-footer">
-            <label class="input-group compact-field"><span>当前账号</span><select id="account-select"></select></label>
-            <div class="nav-footer-actions">
-              <button id="refresh-sessions" type="button" class="button-secondary" data-ripple>刷新</button>
-              <button id="logout-button" type="button" class="button-ghost" data-ripple>退出</button>
+        </header>
+
+        <div class="workspace-grid">
+          <aside class="bento-panel panel-dark sidebar" data-motion>
+            <div class="sidebar-heading">
+              <div><span class="panel-label">Sessions</span><h2>会话</h2></div>
+              <div class="inline-actions">
+                <span id="session-count" class="metric-pill">0</span>
+                <button id="refresh-sessions" type="button" class="icon-button inverse" title="刷新会话" aria-label="刷新会话" data-ripple><i data-lucide="refresh-cw"></i></button>
+              </div>
             </div>
-          </div>
-        </nav>
-        <div class="page-main">
-          <header class="page-header surface-card reveal">
-            <div class="page-header-main">
-              <div class="page-header-copy">
-                <span class="eyebrow">Overview</span>
-                    <h1 id="page-title" class="page-header-title">仪表盘首页</h1>
+            <p id="session-caption" class="muted section-copy">按更新时间显示</p>
+            <div id="sessions" class="session-list stack"></div>
+            <div class="sidebar-footer">
+              <label class="input-group"><span>当前账号</span><select id="account-select"></select></label>
+            </div>
+          </aside>
+
+          <main class="workspace-main">
+            <header class="bento-panel panel-accent page-header" data-motion>
+              <div class="page-heading">
+                <span class="panel-label">Workspace</span>
+                <h1 id="page-title">仪表盘首页</h1>
               </div>
               <div class="page-header-meta">
-                <div class="status-badges">
-                  <article class="status-badge"><span>身份</span><strong id="role-label">未登录</strong></article>
-                  <article class="status-badge"><span>用户</span><strong id="user-summary"></strong></article>
-                  <article class="status-badge"><span>无痕</span><strong id="incognito-summary">关闭</strong></article>
-                  <article class="status-badge"><span>大锅饭</span><strong id="shared-mode-summary">关闭</strong></article>
-                  <article class="status-badge"><span>主题</span><strong id="active-theme-label">星空</strong></article>
+                <div class="status-line">
+                  <span>无痕 <strong id="incognito-summary">关闭</strong></span>
+                  <span>共享 <strong id="shared-mode-summary">关闭</strong></span>
+                  <span>主题 <strong id="active-theme-label">星空</strong></span>
                 </div>
-                <div class="metric-badges">
-                  <article class="metric-badge"><span>会话</span><strong id="metric-session-count">0</strong></article>
-                  <article class="metric-badge"><span>消息</span><strong id="message-count">0</strong></article>
-                  <article class="metric-badge"><span>密钥</span><strong id="api-key-count">0</strong></article>
-                  <article class="metric-badge"><span>端点</span><strong id="endpoint-count">0</strong></article>
+                <div class="metric-line">
+                  <span>会话 <strong id="metric-session-count">0</strong></span>
+                  <span>消息 <strong id="message-count">0</strong></span>
+                  <span>密钥 <strong id="api-key-count">0</strong></span>
+                  <span>端点 <strong id="endpoint-count">0</strong></span>
                 </div>
               </div>
-            </div>
-            <div class="page-header-actions">
-              <button id="new-session" type="button" class="button-primary" data-ripple>新建会话</button>
-            </div>
-          </header>
-          <pre id="app-status" class="status status-banner hidden"></pre>
-          <div class="page-body">
-            <aside class="sidebar surface-card reveal">
-              <div class="section-heading">
-                <div><span class="eyebrow">Sessions</span><h2>会话</h2></div>
-                <span id="session-count" class="metric-pill">0</span>
-              </div>
-              <p id="session-caption" class="muted section-copy">按更新时间显示</p>
-              <div id="sessions" class="session-list stack"></div>
-            </aside>
-            <section class="page-content surface-card reveal">
-              <section id="tab-dashboard" class="tab-pane page-section dashboard-home">
-                <div class="page-title-row">
-                  <div>
-                    <h2>仪表盘首页</h2>
-                    <p class="muted">查看账号健康、请求趋势、最近调用和验证码告警。</p>
-                  </div>
-                  <button type="button" class="button-secondary" data-tab="chat" data-ripple>进入聊天</button>
+              <button id="new-session" type="button" class="button-dark" data-ripple><i data-lucide="plus"></i><span>新建会话</span></button>
+            </header>
+
+            <pre id="app-status" class="status status-banner hidden"></pre>
+
+            <section class="page-content">
+              <section id="tab-dashboard" class="tab-pane dashboard-home" data-motion>
+                <div class="section-title-bar bento-panel panel-paper">
+                  <div><span class="panel-label">Overview</span><h2>运行概览</h2></div>
+                  <button type="button" class="icon-button" data-tab="chat" title="进入聊天" aria-label="进入聊天" data-ripple><i data-lucide="arrow-up-right"></i></button>
                 </div>
                 <div id="dashboard-health-cards" class="dashboard-card-grid"></div>
                 <div class="dashboard-overview-grid">
-                  <article class="settings-card surface-inset">
-                    <div class="section-heading"><div><span class="eyebrow">Trend</span><h3>请求趋势</h3></div></div>
+                  <article class="bento-panel panel-paper settings-card trend-panel">
+                    <div class="section-heading"><div><span class="panel-label">Trend</span><h3>请求趋势</h3></div></div>
                     <div id="dashboard-request-chart" class="dashboard-chart"></div>
                   </article>
-                  <article class="settings-card surface-inset">
-                    <div class="section-heading"><div><span class="eyebrow">Captcha</span><h3>验证码告警</h3></div></div>
+                  <article class="bento-panel panel-dark settings-card verification-panel">
+                    <div class="section-heading"><div><span class="panel-label">Verification</span><h3>验证状态</h3></div></div>
                     <div id="captcha-alert-list" class="alert-list"></div>
                   </article>
                 </div>
-                <article class="settings-card surface-inset">
-                  <div class="section-heading"><div><span class="eyebrow">Recent</span><h3>最近请求</h3></div></div>
+                <article class="bento-panel panel-paper settings-card recent-panel">
+                  <div class="section-heading"><div><span class="panel-label">Recent</span><h3>最近请求</h3></div></div>
                   <div id="dashboard-recent-logs" class="request-log-list compact"></div>
                 </article>
               </section>
-              <section id="tab-chat" class="tab-pane chat-section hidden">
-                <div class="chat-toolbar">
-                  <label class="input-group compact-field">
-                    <span>模型</span>
-                    <select id="model-select">
-                      <option value="deepseek-chat">快速模式</option>
-                      <option value="deepseek-chat-search">快速模式 + 搜索</option>
-                      <option value="deepseek-reasoner">快速模式 + 深度思考</option>
-                      <option value="deepseek-reasoner-search">快速模式 + 思考 + 搜索</option>
-                      <option value="deepseek-chat-expert">专家模式</option>
-                      <option value="deepseek-reasoner-expert">专家模式 + 深度思考</option>
-                      <option value="deepseek-vision">识图模式</option>
-                      <option value="deepseek-vision-reasoner">识图模式 + 深度思考</option>
-                    </select>
-                  </label>
-                  <label class="input-group compact-field">
-                    <span>输出</span>
-                    <select id="response-mode">
-                      <option value="stream">流式</option>
-                      <option value="non-stream">非流式</option>
-                    </select>
-                  </label>
+
+              <section id="tab-chat" class="tab-pane chat-section hidden" data-motion>
+                <div class="bento-panel panel-paper chat-toolbar">
+                  <label class="input-group compact-field"><span>模型</span><select id="model-select">
+                    <option value="deepseek-chat">快速模式</option>
+                    <option value="deepseek-chat-search">快速 + 搜索</option>
+                    <option value="deepseek-reasoner">深度思考</option>
+                    <option value="deepseek-reasoner-search">思考 + 搜索</option>
+                    <option value="deepseek-chat-expert">专家模式</option>
+                    <option value="deepseek-reasoner-expert">专家 + 思考</option>
+                    <option value="deepseek-vision">识图模式</option>
+                    <option value="deepseek-vision-reasoner">识图 + 思考</option>
+                  </select></label>
+                  <label class="input-group compact-field"><span>输出</span><select id="response-mode"><option value="stream">流式</option><option value="non-stream">非流式</option></select></label>
                 </div>
-                <div id="messages" class="messages"></div>
-                <div class="composer surface-inset">
-                  <label class="input-group"><span>内容</span><textarea id="prompt-input" rows="6" placeholder="输入内容"></textarea></label>
+                <div id="messages" class="bento-panel panel-paper messages"></div>
+                <div class="bento-panel panel-dark composer">
+                  <label class="input-group"><span>内容</span><textarea id="prompt-input" rows="5" placeholder="输入内容"></textarea></label>
                   <div id="draft-files" class="draft-files"></div>
                   <input id="file-input" type="file" class="hidden" multiple>
                   <div class="composer-actions">
-                    <div class="composer-meta">
-                      <button id="attach-files" type="button" class="button-secondary" data-ripple>上传文件</button>
-                      <div class="muted helper-copy">Ctrl/Cmd + Enter 发送</div>
-                    </div>
-                    <button id="send-button" type="button" class="button-primary send-button" data-ripple>发送</button>
+                    <button id="attach-files" type="button" class="icon-button inverse" title="上传文件" aria-label="上传文件" data-ripple><i data-lucide="paperclip"></i></button>
+                    <button id="send-button" type="button" class="button-primary send-button" data-ripple><span>发送</span><i data-lucide="send"></i></button>
                   </div>
                 </div>
                 <pre id="chat-status" class="status hidden"></pre>
               </section>
-              <section id="tab-accounts" class="tab-pane page-section hidden">
-                <div class="settings-grid">
-                  <article id="account-binding-card" class="settings-card surface-inset">
-                    <div class="section-heading"><div><span class="eyebrow">Accounts</span><h3>绑定 DeepSeek 账号</h3></div></div>
+
+              <section id="tab-accounts" class="tab-pane hidden" data-motion>
+                <div class="settings-grid accounts-grid">
+                  <article id="account-binding-card" class="bento-panel panel-paper settings-card">
+                    <div class="section-heading"><div><span class="panel-label">Accounts</span><h3>绑定 DeepSeek 账号</h3></div></div>
                     <form id="account-form" class="form-grid">
                       <label class="input-group"><span>账号</span><input id="account-username" placeholder="手机号 / 邮箱" autocomplete="username"></label>
                       <label class="input-group"><span>密码</span><input id="account-password" type="password" placeholder="输入密码" autocomplete="current-password"></label>
-                      <button type="submit" class="button-primary" data-ripple>绑定</button>
+                      <button type="submit" class="button-primary" data-ripple><span>绑定</span><i data-lucide="link"></i></button>
                     </form>
                     <pre id="account-status" class="status hidden"></pre>
                     <div id="account-list" class="account-list stack"></div>
                   </article>
-                  <article id="incognito-card" class="settings-card surface-inset">
-                    <div class="section-heading"><div><span class="eyebrow">Incognito</span><h3>无痕</h3></div></div>
+                  <article id="incognito-card" class="bento-panel panel-dark settings-card">
+                    <div class="section-heading"><div><span class="panel-label">Incognito</span><h3>无痕模式</h3></div></div>
                     <p id="incognito-description" class="muted section-copy"></p>
                     <form id="incognito-form" class="settings-form">
                       <label class="toggle-chip settings-toggle"><input id="incognito-toggle" type="checkbox"><span id="incognito-label">仅自己开启</span></label>
@@ -254,7 +253,7 @@
                     </form>
                     <pre id="incognito-status" class="status hidden"></pre>
                     <div id="shared-mode-panel" class="shared-mode-panel hidden">
-                      <div class="section-heading"><div><span class="eyebrow">Shared</span><h3>大锅饭</h3></div></div>
+                      <div class="section-heading"><div><span class="panel-label">Shared</span><h3>大锅饭</h3></div></div>
                       <p id="shared-mode-description" class="muted section-copy"></p>
                       <form id="shared-mode-form" class="settings-form">
                         <label class="toggle-chip settings-toggle"><input id="shared-mode-toggle" type="checkbox"><span id="shared-mode-label">全局共享账户</span></label>
@@ -263,153 +262,120 @@
                       <pre id="shared-mode-status" class="status hidden"></pre>
                     </div>
                   </article>
+                  <article id="cot-override-card" class="bento-panel panel-accent settings-card">
+                    <div class="section-heading"><div><span class="panel-label">Experimental</span><h3>思维链覆写模式（实验性）</h3></div></div>
+                    <p id="cot-override-description" class="muted section-copy"></p>
+                    <form id="cot-override-form" class="settings-form">
+                      <label class="toggle-chip settings-toggle"><input id="cot-override-toggle" type="checkbox"><span id="cot-override-label">仅自己开启（实验性）</span></label>
+                      <button type="submit" class="button-dark" data-ripple>保存</button>
+                    </form>
+                    <pre id="cot-override-status" class="status hidden"></pre>
+                  </article>
                 </div>
               </section>
-              <section id="tab-keys" class="tab-pane page-section hidden api-key-page">
-                <div class="page-title-row">
-                  <div>
-                    <h2>API Key 管理</h2>
-                    <p class="muted">创建和管理您的 API Key，使用 API 访问 DeepSeek2API 服务。</p>
-                  </div>
-                </div>
-                <form id="api-key-form" class="form-grid api-key-create-form">
+
+              <section id="tab-keys" class="tab-pane hidden" data-motion>
+                <div class="section-title-bar bento-panel panel-paper"><div><span class="panel-label">Credentials</span><h2>API Key</h2></div></div>
+                <form id="api-key-form" class="bento-panel panel-accent form-grid api-key-create-form">
                   <label class="input-group"><span>标签</span><input id="api-key-label" placeholder="例如：主账号"></label>
                   <label class="input-group"><span>自定义 Key</span><input id="api-key-plain" placeholder="可留空"></label>
-                  <label class="toggle-chip settings-toggle">
-                    <input id="api-key-tool-calls" type="checkbox">
-                    <span>启用工具调用</span>
-                  </label>
-                  <button type="submit" class="button-primary" data-ripple>保存</button>
+                  <label class="toggle-chip settings-toggle"><input id="api-key-tool-calls" type="checkbox"><span>工具调用</span></label>
+                  <button type="submit" class="button-dark" data-ripple><span>创建</span><i data-lucide="plus"></i></button>
                 </form>
                 <pre id="api-key-output" class="status hidden"></pre>
                 <div id="api-keys" class="key-list stack"></div>
               </section>
-              <section id="tab-explorer" class="tab-pane page-section hidden logs-page">
-                <div class="page-title-row">
-                  <div>
-                    <h2>请求日志监控</h2>
-                    <p class="muted">实时查看 OpenAI 兼容接口和代理转发请求状态。</p>
-                  </div>
-                  <div class="inline-actions">
-                    <span class="chip">5 秒自动刷新</span>
-                    <button id="refresh-request-logs" type="button" class="button-secondary" data-ripple>刷新日志</button>
-                  </div>
+
+              <section id="tab-explorer" class="tab-pane hidden" data-motion>
+                <div class="section-title-bar bento-panel panel-paper">
+                  <div><span class="panel-label">Requests</span><h2>请求日志</h2></div>
+                  <button id="refresh-request-logs" type="button" class="icon-button" title="刷新日志" aria-label="刷新日志" data-ripple><i data-lucide="refresh-cw"></i></button>
                 </div>
-                <div id="request-log-list" class="request-log-list"></div>
-                <form id="explorer-form" class="explorer-form">
+                <div id="request-log-list" class="bento-panel panel-paper request-log-list"></div>
+                <form id="explorer-form" class="bento-panel panel-dark explorer-form">
                   <div class="explorer-grid">
                     <label class="input-group"><span>路径</span><select id="explorer-path"></select></label>
                     <label class="input-group"><span>方法</span><select id="explorer-method"><option value="GET">GET</option><option value="POST">POST</option></select></label>
                   </div>
-                  <label class="input-group"><span>查询参数</span><textarea id="explorer-query" rows="4" placeholder='{"chat_session_id":"..."}'></textarea></label>
-                  <label class="input-group"><span>请求体</span><textarea id="explorer-body" rows="10" placeholder='{"message":"hello"}'></textarea></label>
-                  <div class="form-actions"><button type="submit" class="button-primary" data-ripple>执行</button></div>
+                  <label class="input-group"><span>查询参数</span><textarea id="explorer-query" rows="3" placeholder='{"chat_session_id":"..."}'></textarea></label>
+                  <label class="input-group"><span>请求体</span><textarea id="explorer-body" rows="7" placeholder='{"message":"hello"}'></textarea></label>
+                  <div class="form-actions"><button type="submit" class="button-primary" data-ripple><span>执行</span><i data-lucide="play"></i></button></div>
                 </form>
                 <pre id="explorer-output" class="status status-large hidden"></pre>
               </section>
-              <section id="tab-settings" class="tab-pane page-section hidden settings-page" data-admin-only="true">
-                <div class="page-title-row">
-                  <div>
-                    <h2>系统设置</h2>
-                    <p class="muted">集中管理基础信息、注册策略、风控验证码和版本说明。</p>
-                  </div>
-                </div>
+
+              <section id="tab-settings" class="tab-pane hidden" data-admin-only="true" data-motion>
                 <div class="settings-panel-grid">
-                  <article class="settings-card surface-inset">
-                    <div class="section-heading"><div><span class="eyebrow">Basic</span><h3>基础</h3></div></div>
-                    <div class="settings-kv">
-                      <span>服务地址</span><strong id="settings-origin"></strong>
-                      <span>协议版本</span><strong>DeepSeek Web 2.2.0</strong>
-                      <span>前端模式</span><strong>Vanilla ES Modules</strong>
-                    </div>
+                  <article class="bento-panel panel-paper settings-card">
+                    <div class="section-heading"><div><span class="panel-label">Basic</span><h3>基础</h3></div></div>
+                    <div class="settings-kv"><span>服务地址</span><strong id="settings-origin"></strong><span>兼容层</span><strong>OpenAI Chat Completions</strong><span>前端</span><strong>Vanilla ES Modules</strong></div>
                   </article>
-                  <article class="settings-card surface-inset">
-                    <div class="section-heading"><div><span class="eyebrow">Registration</span><h3>注册</h3></div></div>
-                    <p class="muted section-copy">邀请码开关仍在“用户管理”中维护；此处用于快速查看当前策略。</p>
-                    <div class="settings-kv">
-                      <span>邀请码</span><strong id="settings-registration-summary">关闭</strong>
-                    </div>
+                  <article class="bento-panel panel-accent settings-card">
+                    <div class="section-heading"><div><span class="panel-label">Registration</span><h3>注册策略</h3></div></div>
+                    <div class="settings-kv"><span>邀请码</span><strong id="settings-registration-summary">关闭</strong></div>
                   </article>
-                  <article class="settings-card surface-inset settings-risk-card">
-                    <div class="section-heading"><div><span class="eyebrow">Risk</span><h3>风控与验证码</h3></div></div>
+                  <article class="bento-panel panel-dark settings-card settings-risk-card">
+                    <div class="section-heading"><div><span class="panel-label">Verification</span><h3>验证码恢复</h3></div></div>
                     <form id="settings-form" class="settings-form vertical-form">
                       <label class="input-group"><span>YesCaptcha Endpoint</span><input id="settings-endpoint" placeholder="https://api.yescaptcha.com"></label>
                       <label class="input-group"><span>YesCaptcha Key</span><input id="settings-yescaptcha-key" type="password" autocomplete="off"></label>
                       <label class="toggle-chip settings-toggle"><input id="settings-clear-yescaptcha-key" type="checkbox"><span>清空已配置 Key</span></label>
                       <label class="toggle-chip settings-toggle"><input id="settings-auto-solve" type="checkbox"><span>自动处理验证码</span></label>
-                      <label class="toggle-chip settings-toggle"><input id="settings-vision-fallback" type="checkbox"><span>启用 DeepSeek Vision 降级</span></label>
+                      <label class="toggle-chip settings-toggle"><input id="settings-vision-fallback" type="checkbox"><span>DeepSeek Vision 降级</span></label>
+                      <label class="toggle-chip settings-toggle"><input id="settings-cot-override" type="checkbox"><span>思维链覆写模式（实验性，全局）</span></label>
                       <label class="input-group"><span>Vision 备用账号</span><select id="settings-vision-account"></select></label>
-                      <div class="form-grid two-cols">
-                        <label class="input-group"><span>最大重试</span><input id="settings-max-retries" type="number" min="1" max="20"></label>
-                        <label class="input-group"><span>冷却毫秒</span><input id="settings-cooldown-ms" type="number" min="0" step="1000"></label>
-                      </div>
+                      <div class="form-grid two-cols"><label class="input-group"><span>最大重试</span><input id="settings-max-retries" type="number" min="1" max="20"></label><label class="input-group"><span>冷却毫秒</span><input id="settings-cooldown-ms" type="number" min="0" step="1000"></label></div>
                       <div class="form-actions"><button type="submit" class="button-primary" data-ripple>保存设置</button></div>
                     </form>
                     <pre id="settings-status" class="status hidden"></pre>
                   </article>
-                  <article class="settings-card surface-inset">
-                    <div class="section-heading"><div><span class="eyebrow">About</span><h3>关于</h3></div></div>
-                    <p class="muted section-copy">本控制台提供 OpenAI 兼容接口、DeepSeek 协议代理、请求日志、账号池与验证码恢复工作流。</p>
+                  <article class="bento-panel panel-paper settings-card">
+                    <div class="section-heading"><div><span class="panel-label">About</span><h3>DeepSeek2API</h3></div></div>
+                    <p class="muted section-copy">本地账号池与 OpenAI 兼容网关。</p>
                   </article>
                 </div>
               </section>
-              <section id="tab-admin" class="tab-pane page-section hidden">
+
+              <section id="tab-admin" class="tab-pane hidden" data-motion>
                 <div class="settings-grid admin-grid">
-                  <article id="admin-registration-card" class="settings-card surface-inset">
-                    <div class="section-heading"><div><span class="eyebrow">Registration</span><h3>注册开关</h3></div></div>
-                    <form id="admin-registration-form" class="settings-form">
-                      <label class="toggle-chip settings-toggle"><input id="invite-required-toggle" type="checkbox"><span>启用邀请码</span></label>
-                      <button type="submit" class="button-primary" data-ripple>保存</button>
-                    </form>
+                  <article id="admin-registration-card" class="bento-panel panel-accent settings-card">
+                    <div class="section-heading"><div><span class="panel-label">Registration</span><h3>注册开关</h3></div></div>
+                    <form id="admin-registration-form" class="settings-form"><label class="toggle-chip settings-toggle"><input id="invite-required-toggle" type="checkbox"><span>启用邀请码</span></label><button type="submit" class="button-dark" data-ripple>保存</button></form>
                     <pre id="admin-registration-status" class="status hidden"></pre>
                   </article>
-                  <article id="admin-invite-card" class="settings-card surface-inset">
-                    <div class="section-heading"><div><span class="eyebrow">Invites</span><h3>邀请码</h3></div></div>
-                    <form id="admin-invite-form" class="form-grid">
-                      <label class="input-group"><span>数量</span><input id="admin-invite-count" type="number" min="1" step="1" value="1"></label>
-                      <button type="submit" class="button-primary" data-ripple>生成</button>
-                    </form>
+                  <article id="admin-invite-card" class="bento-panel panel-paper settings-card">
+                    <div class="section-heading"><div><span class="panel-label">Invites</span><h3>邀请码</h3></div></div>
+                    <form id="admin-invite-form" class="form-grid"><label class="input-group"><span>数量</span><input id="admin-invite-count" type="number" min="1" step="1" value="1"></label><button type="submit" class="button-primary" data-ripple>生成</button></form>
                     <div class="inline-actions"><button id="delete-selected-invites" type="button" class="button-ghost button-danger" data-ripple>批量删除</button></div>
                     <pre id="admin-invite-status" class="status hidden"></pre>
                     <div id="admin-invite-list" class="stack"></div>
                   </article>
                 </div>
-                <article id="admin-user-card" class="settings-card surface-inset">
-                  <div class="section-heading"><div><span class="eyebrow">Users</span><h3>用户</h3></div></div>
-                  <div class="inline-actions">
-                    <button id="disable-selected-users" type="button" class="button-secondary" data-ripple>批量禁用</button>
-                    <button id="enable-selected-users" type="button" class="button-secondary" data-ripple>批量启用</button>
-                    <button id="delete-selected-users" type="button" class="button-ghost button-danger" data-ripple>批量删除</button>
-                  </div>
+                <article id="admin-user-card" class="bento-panel panel-dark settings-card">
+                  <div class="section-heading"><div><span class="panel-label">Users</span><h3>用户</h3></div></div>
+                  <div class="inline-actions"><button id="disable-selected-users" type="button" class="button-secondary" data-ripple>批量禁用</button><button id="enable-selected-users" type="button" class="button-secondary" data-ripple>批量启用</button><button id="delete-selected-users" type="button" class="button-ghost button-danger" data-ripple>批量删除</button></div>
                   <pre id="admin-user-status" class="status hidden"></pre>
                   <div id="admin-user-list" class="stack"></div>
                 </article>
               </section>
             </section>
-          </div>
+          </main>
         </div>
-        <nav class="bottom-tab-bar surface-card" aria-label="移动导航">
-          <button type="button" class="bottom-tab-item active" data-tab="dashboard" aria-label="仪表盘" data-ripple>
-            <span class="bottom-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19h16M7 16V9m5 7V5m5 11v-4" /></svg></span><span>概览</span>
-          </button>
-          <button type="button" class="bottom-tab-item" data-tab="chat" aria-label="聊天" data-ripple>
-            <span class="bottom-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 6h14v9H8l-3 3V6Z" /></svg></span><span>聊天</span>
-          </button>
-          <button type="button" class="bottom-tab-item" data-tab="accounts" aria-label="账号管理" data-ripple>
-            <span class="bottom-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm7 8a7 7 0 0 0-14 0" /></svg></span><span>账号</span>
-          </button>
-          <button type="button" class="bottom-tab-item" data-tab="keys" aria-label="API Key" data-ripple>
-            <span class="bottom-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14 10a4 4 0 1 0-2.8 3.82L9 16h3v3h3v-3l3-3-1-1" /></svg></span><span>Key</span>
-          </button>
-          <button type="button" class="bottom-tab-item" data-tab="explorer" aria-label="请求日志" data-ripple>
-            <span class="bottom-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 4h12v16H6zM9 8h6M9 12h6M9 16h4" /></svg></span><span>日志</span>
-          </button>
-          <button type="button" class="bottom-tab-item hidden" data-tab="settings" data-admin-only="true" aria-label="系统设置" data-ripple>
-            <span class="bottom-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm0-5v3m0 12v3M4.2 4.2l2.1 2.1m11.4 11.4 2.1 2.1M3 12h3m12 0h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1" /></svg></span><span>设置</span>
-          </button>
+
+        <nav class="bottom-tab-bar bento-panel panel-paper" aria-label="移动导航">
+          <button type="button" class="bottom-tab-item active" data-tab="dashboard" aria-label="仪表盘" data-ripple><i data-lucide="layout-dashboard"></i><span>概览</span></button>
+          <button type="button" class="bottom-tab-item" data-tab="chat" aria-label="聊天" data-ripple><i data-lucide="message-square"></i><span>聊天</span></button>
+          <button type="button" class="bottom-tab-item" data-tab="accounts" aria-label="账号管理" data-ripple><i data-lucide="users"></i><span>账号</span></button>
+          <button type="button" class="bottom-tab-item" data-tab="keys" aria-label="API Key" data-ripple><i data-lucide="key-round"></i><span>密钥</span></button>
+          <button type="button" class="bottom-tab-item" data-tab="explorer" aria-label="请求日志" data-ripple><i data-lucide="scroll-text"></i><span>日志</span></button>
+          <button type="button" class="bottom-tab-item hidden" data-tab="settings" data-admin-only="true" aria-label="系统设置" data-ripple><i data-lucide="settings-2"></i><span>设置</span></button>
+          <button type="button" class="bottom-tab-item hidden" data-tab="admin" data-admin-only="true" aria-label="用户管理" data-ripple><i data-lucide="user-cog"></i><span>用户</span></button>
         </nav>
       </section>
     </div>
-    <script type="module" src="/app.js?v=20260411-3"></script>
+
+    <script defer src="https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
+    <script type="module" src="/app.js?v=20260729-1"></script>
   </body>
 </html>

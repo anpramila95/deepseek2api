@@ -1,18 +1,16 @@
 import { config, resolveDeepseekApiPath } from "../config.js";
+import { createSafeUpstreamError, redactSensitiveText } from "../utils/privacy.js";
 import { saveAccount } from "./account-service.js";
+import { createDeepseekClientHeaders, resolveDeepseekClientProfile } from "./deepseek-device.js";
+import { createProtocolRequestContext } from "./deepseek-protocol.js";
 
 const SETTINGS_SCOPES = Object.freeze(["main", "model", "web_upgrade", "banner"]);
 
 function createSettingsHeaders(account, extraHeaders = {}) {
-  return {
-    "x-client-locale": config.deepseekHeaders.locale,
-    "x-client-bundle-id": config.deepseekHeaders.clientBundleId,
-    "x-client-timezone-offset": config.deepseekHeaders.timezoneOffset,
-    "x-client-version": config.deepseekHeaders.clientVersion,
-    "x-client-platform": config.deepseekHeaders.clientPlatform,
+  return createDeepseekClientHeaders(account, {
     authorization: `Bearer ${account.token}`,
     ...extraHeaders
-  };
+  });
 }
 
 function collectSettingIds(value, ids = new Set()) {
@@ -24,18 +22,23 @@ function collectSettingIds(value, ids = new Set()) {
   return ids;
 }
 
-function createReportDid(deviceId) {
-  return String(deviceId ?? "").replace(/^B/, "").slice(0, 36) || String(deviceId ?? "");
+function createReportDid(account) {
+  return resolveDeepseekClientProfile(account).clientDid;
 }
 
 async function fetchScopeSettings(account, scope) {
+  const profile = resolveDeepseekClientProfile(account);
+  const requestContext = createProtocolRequestContext(profile, "/client/settings");
   const url = new URL(resolveDeepseekApiPath("/client/settings"), config.deepseekBaseUrl);
-  url.searchParams.set("did", account.deviceId);
+  url.searchParams.set("did", profile.clientDid);
   url.searchParams.set("scope", scope);
 
   const response = await fetch(url, {
     method: "GET",
-    headers: createSettingsHeaders(account, { accept: "application/json" })
+    headers: createSettingsHeaders(account, {
+      ...requestContext.headers,
+      accept: "application/json"
+    })
   });
 
   let payload;
@@ -44,12 +47,10 @@ async function fetchScopeSettings(account, scope) {
     responseText = await response.text();
     payload = JSON.parse(responseText);
   } catch {
-    const preview = responseText ? responseText.slice(0, 500) : "(empty body)";
-    throw new Error(
-      `Settings ${scope} request failed (HTTP ${response.status}): unable to parse response. ` +
-      `This may indicate network connectivity issues to chat.deepseek.com\n` +
-      `Response body preview: ${preview}`
-    );
+    throw createSafeUpstreamError(`Settings ${scope} request failed: unable to parse upstream response`, {
+      status: response.status,
+      body: responseText
+    });
   }
 
   if (!response.ok || payload?.data?.biz_code !== 0) {
@@ -60,12 +61,16 @@ async function fetchScopeSettings(account, scope) {
 }
 
 async function reportSettings(account, settingsIds) {
+  const requestContext = createProtocolRequestContext(account, "/client/settings/report");
   const response = await fetch(`${config.deepseekBaseUrl}${resolveDeepseekApiPath("/client/settings/report")}`, {
     method: "POST",
-    headers: createSettingsHeaders(account, { "content-type": "application/json" }),
+    headers: createSettingsHeaders(account, {
+      ...requestContext.headers,
+      "content-type": "application/json"
+    }),
     body: JSON.stringify({
       settings_ids: [...settingsIds],
-      did: createReportDid(account.deviceId),
+      did: createReportDid(account),
       sso_id: account.ssoId || account.deepseekUserId || ""
     })
   });
@@ -79,8 +84,9 @@ async function reportSettings(account, settingsIds) {
 }
 
 export async function reportClientSettingsForAccount(account) {
-  if (!account?.token || !account?.deviceId) {
-    return { ok: false, settingsIds: [], error: "Missing token or device_id" };
+  const profile = resolveDeepseekClientProfile(account);
+  if (!account?.token || !profile.clientDid) {
+    return { ok: false, settingsIds: [], error: "Missing token or client_did" };
   }
 
   try {
@@ -93,6 +99,10 @@ export async function reportClientSettingsForAccount(account) {
     await reportSettings(account, settingsIds);
     const updatedAccount = saveAccount({
       ...account,
+      deviceId: profile.loginDeviceId,
+      loginDeviceId: profile.loginDeviceId,
+      clientDid: profile.clientDid,
+      deviceProfile: profile,
       settingsIds: [...settingsIds],
       settingsReported: true,
       lastSettingsReport: new Date().toISOString(),
@@ -104,9 +114,9 @@ export async function reportClientSettingsForAccount(account) {
     saveAccount({
       ...account,
       settingsReported: false,
-      lastSettingsError: error.message,
+      lastSettingsError: redactSensitiveText(error.message),
       lastSettingsReport: new Date().toISOString()
     });
-    return { ok: false, settingsIds: [], error: error.message };
+    return { ok: false, settingsIds: [], error: redactSensitiveText(error.message) };
   }
 }

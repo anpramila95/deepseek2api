@@ -1,5 +1,5 @@
 import { requestJson, proxyJson } from "/api.js";
-import { getDeviceId } from "/device.js";
+import { getDeviceProfile } from "/device.js";
 
 async function postJson(url, body) {
   return requestJson(url, {
@@ -71,11 +71,12 @@ export function createAppServices(options) {
   }
 
   async function addAccount({ password, username }) {
-    const deviceId = await getDeviceId();
+    const deviceProfile = await getDeviceProfile();
     const payload = await postJson("/api/accounts", {
       username,
       password,
-      deviceId
+      deviceProfile,
+      deviceId: deviceProfile.loginDeviceId
     });
 
     els["account-password"].value = "";
@@ -112,6 +113,11 @@ export function createAppServices(options) {
 
   async function toggleIncognito(enabled) {
     await postJson("/api/incognito", { enabled });
+    await bootstrap();
+  }
+
+  async function toggleChainOfThoughtOverride(enabled) {
+    await postJson("/api/chain-of-thought-override", { enabled });
     await bootstrap();
   }
 
@@ -155,6 +161,13 @@ export function createAppServices(options) {
     setAppState({ requestLogs: payload.logs ?? [] });
     view.renderRequestLogs?.();
     view.renderDashboard?.();
+    view.renderMetrics?.();
+  }
+
+  async function loadApiKeys() {
+    const payload = await requestJson("/api/api-keys");
+    setAppState({ apiKeys: payload.apiKeys ?? [] });
+    view.renderApiKeys?.();
     view.renderMetrics?.();
   }
 
@@ -219,6 +232,7 @@ export function createAppServices(options) {
     deleteUser,
     handleApiKeyDelete,
     login,
+    loadApiKeys,
     loadRequestLogs,
     logout,
     register,
@@ -226,6 +240,7 @@ export function createAppServices(options) {
     retryCaptcha,
     submitApiKey,
     submitExplorer,
+    toggleChainOfThoughtOverride,
     toggleSharedAccountMode,
     updateApiKey,
     toggleIncognito,

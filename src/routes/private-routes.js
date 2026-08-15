@@ -12,13 +12,17 @@ import {
   resolveAccountLabel
 } from "../services/account-service.js";
 import { loginToDeepseek } from "../services/deepseek-auth.js";
-import { resolveDeepseekDeviceId } from "../services/deepseek-device.js";
+import { resolveDeepseekClientProfile } from "../services/deepseek-device.js";
 import { reportClientSettingsForAccount } from "../services/deepseek-settings.js";
 import {
   attemptCaptchaAutoSolveForAccount,
   clearCaptchaState,
   resolveCaptchaManually
 } from "../services/captcha-service.js";
+import {
+  getChainOfThoughtOverrideState,
+  setOwnerChainOfThoughtOverrideEnabled
+} from "../services/chain-of-thought-override-service.js";
 import { setGlobalIncognitoEnabled, setOwnerIncognitoEnabled } from "../services/incognito-service.js";
 import { listRequestLogs } from "../services/request-log-service.js";
 import {
@@ -48,24 +52,24 @@ function toIncognitoPayload(session) {
 
 async function handleAccountCreation(request, response, session) {
   const body = await readJsonRequest(request);
-  const deviceId = resolveDeepseekDeviceId(body.deviceId);
+  const deviceProfile = resolveDeepseekClientProfile(body.deviceProfile ?? { deviceId: body.deviceId });
 
   try {
     const loginResult = await loginToDeepseek({
       loginValue: body.username,
       password: body.password,
-      deviceId
+      deviceProfile
     });
     const account = saveDeepseekAccountForOwner({
       ownerId: session.ownerId,
       loginValue: body.username,
       password: body.password,
-      deviceId,
+      deviceProfile,
       loginResult
     });
 
-    await reportClientSettingsForAccount(account);
-    sendJson(response, 200, { account: toPublicAccount(account) });
+    const reportResult = await reportClientSettingsForAccount(account);
+    sendJson(response, 200, { account: toPublicAccount(reportResult.account ?? account) });
   } catch (error) {
     sendError(response, 401, error.message);
   }
@@ -84,6 +88,16 @@ async function handleIncognitoUpdate(request, response, session) {
 
   sendJson(response, 200, {
     incognito: toIncognitoPayload(session)
+  });
+  return true;
+}
+
+async function handleChainOfThoughtOverrideUpdate(request, response, session) {
+  const body = await readJsonRequest(request);
+  setOwnerChainOfThoughtOverrideEnabled(session.ownerId, body.enabled);
+
+  sendJson(response, 200, {
+    chainOfThoughtOverride: getChainOfThoughtOverrideState(session.ownerId)
   });
   return true;
 }
@@ -182,6 +196,10 @@ export async function handlePrivateApiRequest({ request, response, session, url 
 
   if (request.method === "POST" && url.pathname === "/api/incognito") {
     return handleIncognitoUpdate(request, response, session);
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/chain-of-thought-override") {
+    return handleChainOfThoughtOverrideUpdate(request, response, session);
   }
 
   if (request.method === "GET" && url.pathname === "/api/api-keys") {

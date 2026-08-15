@@ -49,15 +49,13 @@ function toSection(kind, content) {
 }
 
 function renderSectionMarkup(section) {
-  const label = section.kind === "thinking"
-    ? '<div class="message-label">THINKING</div>'
-    : "";
+  const kind = escapeHtml(section.kind);
+  const content = escapeHtml(section.content);
+  if (section.kind === "thinking") {
+    return `<details class="message-section thinking" data-message-section="true" data-section-kind="thinking"><summary class="message-label">THINKING</summary><span data-section-text>${content}</span></details>`;
+  }
 
-  return `
-    <div class="message-section ${section.kind}" data-message-section="true" data-section-kind="${escapeHtml(section.kind)}">
-      ${label}<span data-section-text>${escapeHtml(section.content)}</span>
-    </div>
-  `;
+  return `<div class="message-section ${kind}" data-message-section="true" data-section-kind="${kind}"><span data-section-text>${content}</span></div>`;
 }
 
 export function mapServerFile(file) {

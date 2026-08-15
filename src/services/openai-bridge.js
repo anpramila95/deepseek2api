@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
 
+import { isChainOfThoughtOverrideEnabledForOwner } from "./chain-of-thought-override-service.js";
 import { collectCompletionContent, streamCompletionContent } from "./openai-completion-runner.js";
 import { assertNoLegacySearchOptions, resolveOpenAiModel } from "./openai-request.js";
+import { appendExpertPromptSuffix } from "./expert-prompt-service.js";
 import { createToolSieve, extractToolAwareOutput } from "./openai-tool-sieve.js";
 import { buildOpenAiPrompt } from "./openai-tool-prompt.js";
 import { ensureToolChoiceSatisfied, hasChatToolingRequest } from "./openai-tool-policy.js";
@@ -40,7 +42,7 @@ function extractImageInputs(messages) {
   });
 }
 
-function resolveCompletionRequest(body, toolCallsEnabled) {
+export function resolveCompletionRequest({ body, ownerId, toolCallsEnabled }) {
   assertNoLegacySearchOptions(body);
 
   if (!toolCallsEnabled && hasChatToolingRequest(body)) {
@@ -64,10 +66,14 @@ function resolveCompletionRequest(body, toolCallsEnabled) {
     toolChoice: toolCallsEnabled ? body?.tool_choice : undefined,
     tools: toolCallsEnabled ? body?.tools ?? [] : []
   });
+  const prompt = appendExpertPromptSuffix(promptRequest.prompt, {
+    modelType: model.modelType,
+    enabled: isChainOfThoughtOverrideEnabledForOwner(ownerId)
+  });
 
   return {
     model,
-    prompt: promptRequest.prompt,
+    prompt,
     imageInputs,
     toolChoicePolicy: promptRequest.toolChoicePolicy,
     toolNames: promptRequest.toolNames
@@ -141,9 +147,10 @@ export async function collectOpenAiResponse({
   account,
   body,
   deleteAfterFinish = false,
+  ownerId,
   toolCallsEnabled = false
 }) {
-  const requestOptions = resolveCompletionRequest(body, toolCallsEnabled);
+  const requestOptions = resolveCompletionRequest({ body, ownerId, toolCallsEnabled });
   const { content } = await collectCompletionContent({
     account,
     deleteAfterFinish,
@@ -158,11 +165,12 @@ export async function streamOpenAiResponse(options) {
     account,
     body,
     deleteAfterFinish = false,
+    ownerId,
     response,
     toolCallsEnabled = false
   } = options;
   const completionId = createCompletionId();
-  const requestOptions = resolveCompletionRequest(body, toolCallsEnabled);
+  const requestOptions = resolveCompletionRequest({ body, ownerId, toolCallsEnabled });
   const toolSieve = requestOptions.toolNames.length
     ? createToolSieve(requestOptions.toolNames)
     : null;

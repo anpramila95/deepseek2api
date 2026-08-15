@@ -102,6 +102,10 @@ function removeLocalOwnerState(state, ownerIds, userIds) {
   const nextIncognitoOwners = Object.fromEntries(
     Object.entries(state.incognito.owners).filter(([ownerId]) => !ownerIds.has(ownerId))
   );
+  const nextOverrideOwners = Object.fromEntries(
+    Object.entries(state.chainOfThoughtOverride.owners)
+      .filter(([ownerId]) => !ownerIds.has(ownerId))
+  );
 
   return {
     ...state,
@@ -112,6 +116,10 @@ function removeLocalOwnerState(state, ownerIds, userIds) {
     incognito: {
       ...state.incognito,
       owners: nextIncognitoOwners
+    },
+    chainOfThoughtOverride: {
+      ...state.chainOfThoughtOverride,
+      owners: nextOverrideOwners
     }
   };
 }

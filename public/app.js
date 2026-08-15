@@ -14,6 +14,7 @@ import { resolveChatModel } from "/chat-models.js";
 import { appendDelta } from "/deepseek-message.js";
 import { initializeResponseModeControl, isStreamModeEnabled } from "/response-mode.js";
 import { createSessionWorkspace } from "/session-workspace.js";
+import { setupMotionEffects } from "/motion.js";
 import { createDeltaStreamer } from "/streaming-text.js";
 import { setupAuthTabs } from "/auth-ui.js";
 import { setupThemeController } from "/theme.js";
@@ -26,6 +27,53 @@ const themeController = setupThemeController();
 let view;
 let workspace;
 let draftFiles;
+let iconRenderFrame = 0;
+
+function renderLucideIcons() {
+  if (!window.lucide) {
+    return;
+  }
+
+  window.lucide.createIcons({
+    attrs: {
+      "aria-hidden": "true",
+      "stroke-width": "1.8"
+    }
+  });
+}
+
+function scheduleLucideRender() {
+  if (iconRenderFrame) {
+    return;
+  }
+
+  iconRenderFrame = window.requestAnimationFrame(() => {
+    iconRenderFrame = 0;
+    renderLucideIcons();
+  });
+}
+
+function setupLucideIcons() {
+  const root = document.querySelector(".app-shell");
+  if (!root) {
+    return;
+  }
+
+  const observer = new MutationObserver((records) => {
+    const hasNewIcon = records.some((record) => Array.from(record.addedNodes).some((node) => (
+      node instanceof Element
+      && (node.matches("i[data-lucide]") || node.querySelector("i[data-lucide]"))
+    )));
+
+    if (hasNewIcon) {
+      scheduleLucideRender();
+    }
+  });
+
+  observer.observe(root, { childList: true, subtree: true });
+  scheduleLucideRender();
+  window.addEventListener("load", scheduleLucideRender, { once: true });
+}
 
 function getSelectedModel() {
   return resolveChatModel(els["model-select"].value);
@@ -301,6 +349,8 @@ setupTabs();
 initializeResponseModeControl(els["response-mode"]);
 setActiveTab("dashboard");
 wireRippleEffects();
+setupLucideIcons();
+setupMotionEffects();
 els["model-select"].onchange = () => {
   if (!selectedModelSupportsUploads() && state.draftFiles.length) {
     draftFiles.setDraftFiles([]);
@@ -329,6 +379,7 @@ bindActions({
   onRegister: services.register,
   onSendPrompt: sendPrompt,
   onSubmitApiKey: services.submitApiKey,
+  onToggleChainOfThoughtOverride: services.toggleChainOfThoughtOverride,
   onToggleIncognito: services.toggleIncognito,
   onToggleSharedAccountMode: services.toggleSharedAccountMode,
   onUpdateSystemSettings: services.updateSystemSettings,
@@ -337,9 +388,13 @@ bindActions({
   onUploadFiles: uploadFiles,
   setStatus
 });
-document.addEventListener("apptabchange", () => {
+document.addEventListener("apptabchange", (event) => {
   if (state.session) {
     view.renderHeader();
+  }
+
+  if (state.session && event.detail?.tab === "keys") {
+    services.loadApiKeys().catch(() => {});
   }
 
   refreshRequestLogsIfVisible();

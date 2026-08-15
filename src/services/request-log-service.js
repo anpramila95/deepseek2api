@@ -1,3 +1,5 @@
+import { redactSensitiveText } from "../utils/privacy.js";
+
 const MAX_LOGS = 500;
 const requestLogs = [];
 let nextLogId = 1;
@@ -13,7 +15,7 @@ export function recordRequestLog(entry) {
     accountId: entry.accountId || "",
     status: entry.status ?? null,
     durationMs: entry.durationMs ?? null,
-    error: entry.error || ""
+    error: redactSensitiveText(entry.error || "")
   };
 
   requestLogs.unshift(record);

@@ -1,5 +1,6 @@
 import { updateStore, readStore } from "../storage/store.js";
 import { createId } from "../utils/id.js";
+import { maskIdentifier } from "../utils/privacy.js";
 
 function withUpdatedRecord(account, nextFields) {
   return {
@@ -32,10 +33,11 @@ export function getAccountById(accountId) {
 
 export function resolveAccountLabel(account) {
   return [
-    account?.loginValue,
+    account?.loginValueMasked,
     account?.displayName,
     account?.emailMasked,
     account?.mobileMasked,
+    account?.loginValue ? maskIdentifier(account.loginValue) : "",
     account?.id
   ].find(Boolean) ?? "";
 }

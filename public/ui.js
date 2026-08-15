@@ -78,29 +78,12 @@ function formatDateTime(value) {
   }).format(new Date(value));
 }
 
-function renderIcon(pathMarkup) {
-  return `
-    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      ${pathMarkup}
-    </svg>
-  `;
-}
-
 function renderCopyIcon() {
-  return renderIcon(`
-    <rect x="9" y="9" width="11" height="11" rx="2"></rect>
-    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-  `);
+  return '<i data-lucide="copy" aria-hidden="true"></i>';
 }
 
 function renderTrashIcon() {
-  return renderIcon(`
-    <path d="M3 6h18"></path>
-    <path d="M8 6V4h8v2"></path>
-    <path d="M19 6l-1 14H6L5 6"></path>
-    <path d="M10 11v5"></path>
-    <path d="M14 11v5"></path>
-  `);
+  return '<i data-lucide="trash-2" aria-hidden="true"></i>';
 }
 
 async function copyText(value) {
@@ -401,8 +384,11 @@ export function renderSystemSettingsForm({ accounts, elements, isAdmin, settings
   elements.yescaptchaKey.placeholder = captcha.hasYescaptchaKey
     ? `已配置：${captcha.yescaptchaKeyMasked || "******"}，留空保持不变`
     : "输入 YesCaptcha clientKey";
-  elements.autoSolve.checked = captcha.autoSolveEnabled !== false;
+  elements.autoSolve.checked = captcha.autoSolveEnabled === true;
   elements.visionFallback.checked = captcha.visionFallbackEnabled !== false;
+  if (elements.chainOfThoughtOverride) {
+    elements.chainOfThoughtOverride.checked = settings?.chainOfThoughtOverrideEnabled === true;
+  }
   elements.maxRetries.value = captcha.maxRetries ?? 3;
   elements.cooldownMs.value = captcha.cooldownMs ?? 60000;
   elements.visionAccount.innerHTML = [
@@ -418,11 +404,12 @@ export function renderSystemSettingsForm({ accounts, elements, isAdmin, settings
     elements.yescaptchaKey,
     elements.clearKey,
     elements.autoSolve,
+    elements.chainOfThoughtOverride,
     elements.visionFallback,
     elements.visionAccount,
     elements.maxRetries,
     elements.cooldownMs
-  ].forEach((element) => {
+  ].filter(Boolean).forEach((element) => {
     element.disabled = !isAdmin;
   });
 }

@@ -146,6 +146,20 @@ function bindWorkspaceActions({
   });
 }
 
+function bindChainOfThoughtOverrideAction({ els, onToggleChainOfThoughtOverride, setStatus }) {
+  els["cot-override-form"].onsubmit = async (event) => {
+    event.preventDefault();
+    setStatus(els["cot-override-status"], "保存中...");
+
+    try {
+      await onToggleChainOfThoughtOverride(els["cot-override-toggle"].checked);
+      setStatus(els["cot-override-status"], "已保存。");
+    } catch (error) {
+      setStatus(els["cot-override-status"], error.message);
+    }
+  };
+}
+
 function bindSessionActions({ els, onCreateSession, onRefreshSessions, setStatus }) {
   els["refresh-sessions"].onclick = async () => {
     setStatus(els["app-status"], "");
@@ -276,7 +290,8 @@ function bindSystemSettingsActions({ els, onUpdateSystemSettings, setStatus }) {
           visionFallbackAccountId: els["settings-vision-account"].value || null,
           maxRetries: els["settings-max-retries"].value,
           cooldownMs: els["settings-cooldown-ms"].value
-        }
+        },
+        chainOfThoughtOverrideEnabled: els["settings-cot-override"].checked
       });
       els["settings-yescaptcha-key"].value = "";
       els["settings-clear-yescaptcha-key"].checked = false;
@@ -290,6 +305,7 @@ function bindSystemSettingsActions({ els, onUpdateSystemSettings, setStatus }) {
 export function bindActions(options) {
   bindAuthActions(options);
   bindWorkspaceActions(options);
+  bindChainOfThoughtOverrideAction(options);
   bindSessionActions(options);
   bindUploadActions(options);
   bindComposerActions(options);

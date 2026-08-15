@@ -1,5 +1,6 @@
 import { config } from "../config.js";
 import { buildAnonymousPayload, buildSessionPayload } from "../services/app-payload-service.js";
+import { getProtocolManifest } from "../services/deepseek-protocol.js";
 import { loginAsAdmin, loginAsLocalUser, registerLocalUserSession } from "../services/auth-service.js";
 import { deleteSession } from "../services/session-service.js";
 import { clearCookie, parseJsonBody, readRequestBody, sendError, sendJson, setCookie } from "../utils/http.js";
@@ -71,9 +72,16 @@ export async function handlePublicApiRequest({ request, response, session, url }
   }
 
   if (request.method === "GET" && url.pathname === "/api/discovery") {
+    const protocol = getProtocolManifest();
     sendJson(response, 200, {
-      paths: [...config.allowedProxyPaths].sort()
+      paths: [...config.allowedProxyPaths].sort(),
+      protocol
     });
+    return true;
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/protocol") {
+    sendJson(response, 200, getProtocolManifest());
     return true;
   }
 

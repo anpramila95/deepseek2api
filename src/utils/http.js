@@ -2,6 +2,7 @@ import { createReadStream, statSync } from "node:fs";
 import { extname, join, normalize } from "node:path";
 
 import { config } from "../config.js";
+import { redactSensitiveText } from "./privacy.js";
 
 const textEncoder = new TextEncoder();
 const publicDirectory = join(process.cwd(), "public");
@@ -35,7 +36,7 @@ export function sendJson(response, statusCode, payload) {
 }
 
 export function sendError(response, statusCode, message) {
-  sendJson(response, statusCode, { error: message });
+  sendJson(response, statusCode, { error: redactSensitiveText(message) });
 }
 
 export function parseCookies(request) {

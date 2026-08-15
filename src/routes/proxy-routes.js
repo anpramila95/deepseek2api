@@ -6,8 +6,10 @@ import {
   createChatCompletionRequestBody,
   sanitizeChatCompletionBody
 } from "../services/deepseek-chat-response.js";
+import { isChainOfThoughtOverrideEnabledForOwner } from "../services/chain-of-thought-override-service.js";
 import { isIncognitoEnabledForOwner } from "../services/incognito-service.js";
 import { proxyDeepseekRequest } from "../services/deepseek-proxy.js";
+import { appendExpertPromptSuffixToPayload } from "../services/expert-prompt-service.js";
 import { recordRequestLog } from "../services/request-log-service.js";
 import { withOwnerRequestLimit } from "../services/request-limit-service.js";
 import { parseJsonBody, readRequestBody, sendError, sendJson } from "../utils/http.js";
@@ -40,6 +42,8 @@ function getResponseHeaders(upstream) {
   delete headers["content-length"];
   delete headers.connection;
   delete headers["keep-alive"];
+  delete headers["set-cookie"];
+  delete headers["set-cookie2"];
   delete headers["transfer-encoding"];
   return headers;
 }
@@ -69,7 +73,7 @@ function assertChatCompletionUploadsSupported(payload) {
   }
 }
 
-function resolveChatCompletionRequest(method, targetPath, body) {
+export function resolveChatCompletionRequest({ body, method, ownerId, targetPath }) {
   if (method !== "POST" || targetPath !== CHAT_COMPLETION_PATH) {
     return null;
   }
@@ -80,11 +84,14 @@ function resolveChatCompletionRequest(method, targetPath, body) {
   }
 
   assertChatCompletionUploadsSupported(payload);
+  const payloadWithPrompt = appendExpertPromptSuffixToPayload(payload, {
+    enabled: isChainOfThoughtOverrideEnabledForOwner(ownerId)
+  });
 
   return {
-    payload,
-    shouldStream: payload.stream !== false,
-    forwardedBody: createChatCompletionRequestBody(payload)
+    payload: payloadWithPrompt,
+    shouldStream: payloadWithPrompt.stream !== false,
+    forwardedBody: createChatCompletionRequestBody(payloadWithPrompt)
   };
 }
 
@@ -152,7 +159,12 @@ export async function handleProxyRequest(request, response, url, allowedProxyPat
       const rawBody = request.method === "GET" || request.method === "HEAD"
         ? undefined
         : await readRequestBody(request);
-      const chatCompletion = resolveChatCompletionRequest(request.method, targetPath, rawBody);
+      const chatCompletion = resolveChatCompletionRequest({
+        body: rawBody,
+        method: request.method,
+        ownerId: session.ownerId,
+        targetPath
+      });
       const forwardedBody = chatCompletion?.forwardedBody ?? rawBody;
       const cleanup = resolveCleanupTask({
         account,

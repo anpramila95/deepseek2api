@@ -1,11 +1,16 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 
 import { config } from "../config.js";
+import { maskIdentifier } from "../utils/privacy.js";
+import { withResolvedDeepseekClientProfile } from "../services/deepseek-device.js";
 
 function defaultState() {
   return {
     accounts: [],
     apiKeys: [],
+    chainOfThoughtOverride: {
+      owners: {}
+    },
     incognito: {
       globalEnabled: false,
       owners: {}
@@ -22,6 +27,18 @@ function defaultState() {
       captcha: {}
     },
     users: []
+  };
+}
+
+function normalizeChainOfThoughtOverride(value) {
+  const owners = value?.owners;
+
+  return {
+    owners: owners && typeof owners === "object"
+      ? Object.fromEntries(
+          Object.entries(owners).map(([ownerId, enabled]) => [ownerId, normalizeBoolean(enabled)])
+        )
+      : {}
   };
 }
 
@@ -61,8 +78,32 @@ function normalizeNumber(value, fallback, { min = 0, max = Number.MAX_SAFE_INTEG
   return Math.max(min, Math.min(max, Math.trunc(parsed)));
 }
 
+function normalizeBoolean(value, fallback = false) {
+  if (value === undefined) {
+    return fallback;
+  }
+
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (["false", "0", "off", "no"].includes(normalized)) {
+      return false;
+    }
+    if (["true", "1", "on", "yes"].includes(normalized)) {
+      return true;
+    }
+  }
+
+  return Boolean(value);
+}
+
 function normalizeSystemSettings(value) {
   const captcha = value?.captcha && typeof value.captcha === "object" ? value.captcha : {};
+  const chainOfThoughtOverrideEnabled = value?.chainOfThoughtOverrideEnabled
+    ?? value?.expertPromptSuffixEnabled
+    ?? value?.expertModePromptSuffixEnabled
+    ?? value?.prompt?.chainOfThoughtOverrideEnabled
+    ?? value?.prompt?.expertPromptSuffixEnabled
+    ?? value?.prompt?.expertModePromptSuffixEnabled;
 
   return {
     captcha: {
@@ -81,7 +122,10 @@ function normalizeSystemSettings(value) {
       cooldownMs: captcha.cooldownMs === undefined
         ? undefined
         : normalizeNumber(captcha.cooldownMs, undefined, { min: 0, max: 3_600_000 })
-    }
+    },
+    ...(chainOfThoughtOverrideEnabled === undefined
+      ? {}
+      : { chainOfThoughtOverrideEnabled: normalizeBoolean(chainOfThoughtOverrideEnabled) })
   };
 }
 
@@ -106,19 +150,51 @@ function normalizeApiKeys(value) {
     return [];
   }
 
-  return value.map((record) => ({
-    ...record,
-    toolCallsEnabled: Boolean(record?.toolCallsEnabled)
-  }));
+  return value.map((record) => {
+    const { key: _legacyPlainKey, ...safeRecord } = record;
+    return {
+      ...safeRecord,
+      toolCallsEnabled: Boolean(record?.toolCallsEnabled)
+    };
+  });
+}
+
+function normalizeAccounts(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.map((account) => {
+    const loginValueMasked = account?.loginValueMasked || maskIdentifier(account?.loginValue);
+    const nextAccount = {
+      ...account,
+      credentialMode: account?.credentialMode ?? (
+        account?.password && config.security.persistAccountCredentials ? "persistent" : "ephemeral"
+      ),
+      loginValueMasked,
+      displayName: account?.displayName ? maskIdentifier(account.displayName) : loginValueMasked,
+      emailMasked: maskIdentifier(account?.emailMasked),
+      mobileMasked: maskIdentifier(account?.mobileMasked)
+    };
+
+    if (!config.security.persistAccountCredentials) {
+      nextAccount.loginValue = loginValueMasked;
+      nextAccount.password = "";
+      nextAccount.credentialMode = "ephemeral";
+    }
+
+    return withResolvedDeepseekClientProfile(nextAccount);
+  });
 }
 
 function normalizeState(value) {
   const incognito = normalizeIncognito(value?.incognito);
-  const accounts = Array.isArray(value?.accounts) ? value.accounts : [];
+  const accounts = normalizeAccounts(value?.accounts);
 
   return {
     accounts,
     apiKeys: normalizeApiKeys(value?.apiKeys),
+    chainOfThoughtOverride: normalizeChainOfThoughtOverride(value?.chainOfThoughtOverride),
     incognito,
     invites: normalizeInvites(value?.invites),
     registration: normalizeRegistration(value?.registration),
@@ -137,7 +213,14 @@ export function readStore() {
   }
 
   const raw = readFileSync(config.dataFile, "utf8");
-  return normalizeState(JSON.parse(raw));
+  const normalized = normalizeState(JSON.parse(raw));
+  const serialized = JSON.stringify(normalized, null, 2);
+
+  if (serialized !== raw) {
+    writeFileSync(config.dataFile, serialized);
+  }
+
+  return normalized;
 }
 
 export function writeStore(state) {

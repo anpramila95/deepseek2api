@@ -61,6 +61,18 @@ function describeIncognito(incognito, role) {
   return "当前：仅自己开启";
 }
 
+function describeChainOfThoughtOverride(state) {
+  if (state?.globalEnabled) {
+    return "当前：管理员已全局开启（实验性）";
+  }
+
+  if (state?.ownerEnabled) {
+    return "当前：仅自己开启（实验性）";
+  }
+
+  return "当前：关闭（实验性）";
+}
+
 function getIncognitoSummary(incognito, role) {
   if (!incognito.effectiveEnabled) {
     return "关闭";
@@ -186,6 +198,7 @@ export function createView(options) {
 
   function renderSettings() {
     const state = currentState();
+    const chainOfThoughtOverride = state.session.chainOfThoughtOverride ?? {};
     const incognito = state.session.incognito;
     const sharedMode = state.session.sharedAccountMode ?? { enabled: false, canToggle: false };
     const label = incognito.scope === "global" ? "全员开启" : "仅自己开启";
@@ -203,6 +216,12 @@ export function createView(options) {
     setText(els["incognito-label"], label);
     setText(els["incognito-description"], describeIncognito(incognito, state.session.role));
     els["incognito-toggle"].checked = Boolean(incognito.scopeEnabled);
+    setText(els["cot-override-label"], "仅自己开启（实验性）");
+    setText(
+      els["cot-override-description"],
+      describeChainOfThoughtOverride(chainOfThoughtOverride)
+    );
+    els["cot-override-toggle"].checked = Boolean(chainOfThoughtOverride.ownerEnabled);
     els["shared-mode-panel"].classList.toggle("hidden", !canToggleSharedMode);
     setText(els["shared-mode-description"], describeSharedMode(sharedMode, incognito));
     setText(els["shared-mode-label"], sharedMode.enabled ? "关闭大锅饭" : "开启大锅饭");
@@ -247,6 +266,16 @@ export function createView(options) {
     });
   }
 
+  function renderApiKeys() {
+    const state = currentState();
+    renderApiKeyList({
+      container: els["api-keys"],
+      keys: state.apiKeys,
+      onDelete: onDeleteKey,
+      onToggleToolCalls: onToggleKeyToolCalls
+    });
+  }
+
   function renderRequestLogs() {
     renderRequestLogList({
       container: els["request-log-list"],
@@ -280,6 +309,7 @@ export function createView(options) {
         clearKey: els["settings-clear-yescaptcha-key"],
         cooldownMs: els["settings-cooldown-ms"],
         endpoint: els["settings-endpoint"],
+        chainOfThoughtOverride: els["settings-cot-override"],
         maxRetries: els["settings-max-retries"],
         visionAccount: els["settings-vision-account"],
         visionFallback: els["settings-vision-fallback"],
@@ -307,12 +337,7 @@ export function createView(options) {
     renderComposer();
     renderSettings();
     renderAdmin();
-    renderApiKeyList({
-      container: els["api-keys"],
-      keys: state.apiKeys,
-      onDelete: onDeleteKey,
-      onToggleToolCalls: onToggleKeyToolCalls
-    });
+    renderApiKeys();
     renderRequestLogs();
     renderDashboard();
     renderSystemSettings();
@@ -325,6 +350,7 @@ export function createView(options) {
       applyRegistrationState(els, registration);
     },
     renderComposer,
+    renderApiKeys,
     renderDashboard,
     renderHeader,
     renderLatestMessage,
@@ -337,6 +363,7 @@ export function createView(options) {
     setView(authenticated) {
       els["login-view"].classList.toggle("hidden", authenticated);
       els["app-view"].classList.toggle("hidden", !authenticated);
+      document.dispatchEvent(new CustomEvent("appviewchange", { detail: { authenticated } }));
     }
   });
 }

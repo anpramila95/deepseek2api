@@ -1,20 +1,20 @@
 import { config, resolveDeepseekApiPath } from "../config.js";
+import { createSafeUpstreamError } from "../utils/privacy.js";
 import { saveAccount } from "./account-service.js";
+import {
+  createDeepseekClientHeaders,
+  resolveDeepseekClientProfile,
+  withResolvedDeepseekClientProfile
+} from "./deepseek-device.js";
+import { createProtocolRequestContext } from "./deepseek-protocol.js";
 import { reportClientSettingsForAccount } from "./deepseek-settings.js";
 
 function isEmail(loginValue) {
-  return loginValue.includes("@");
+  return String(loginValue ?? "").includes("@");
 }
 
-export function createBaseHeaders(token, extraHeaders = {}) {
-  const headers = {
-    "x-client-locale": config.deepseekHeaders.locale,
-    "x-client-bundle-id": config.deepseekHeaders.clientBundleId,
-    "x-client-timezone-offset": config.deepseekHeaders.timezoneOffset,
-    "x-client-version": config.deepseekHeaders.clientVersion,
-    "x-client-platform": config.deepseekHeaders.clientPlatform,
-    ...extraHeaders
-  };
+export function createBaseHeaders(token, extraHeaders = {}, profileSource = {}) {
+  const headers = createDeepseekClientHeaders(profileSource, extraHeaders);
 
   if (token) {
     headers.authorization = `Bearer ${token}`;
@@ -23,23 +23,29 @@ export function createBaseHeaders(token, extraHeaders = {}) {
   return headers;
 }
 
-function buildLoginPayload(loginValue, password, deviceId) {
-  const emailLogin = isEmail(loginValue);
+function buildLoginPayload(loginValue, password, profile) {
+  const normalizedLogin = String(loginValue ?? "").trim();
+  const emailLogin = isEmail(normalizedLogin);
   return {
-    email: emailLogin ? loginValue : "",
-    mobile: emailLogin ? "" : loginValue,
-    password,
-    area_code: emailLogin ? "" : "+86",
-    device_id: deviceId,
-    os: "web"
+    email: emailLogin ? normalizedLogin : "",
+    mobile: emailLogin ? "" : normalizedLogin,
+    password: String(password ?? ""),
+    area_code: emailLogin ? "" : profile.areaCode,
+    device_id: profile.loginDeviceId,
+    os: profile.os
   };
 }
 
-export async function loginToDeepseek({ loginValue, password, deviceId }) {
+export async function loginToDeepseek({ loginValue, password, deviceId, deviceProfile }) {
+  const profile = resolveDeepseekClientProfile(deviceProfile ?? { deviceId });
+  const requestContext = createProtocolRequestContext(profile, "/users/login");
   const response = await fetch(`${config.deepseekBaseUrl}${resolveDeepseekApiPath("/users/login")}`, {
     method: "POST",
-    headers: createBaseHeaders("", { "content-type": "application/json" }),
-    body: JSON.stringify(buildLoginPayload(loginValue, password, deviceId))
+    headers: createBaseHeaders("", {
+      ...requestContext.headers,
+      "content-type": "application/json"
+    }, profile),
+    body: JSON.stringify(buildLoginPayload(loginValue, password, profile))
   });
 
   let result;
@@ -48,16 +54,10 @@ export async function loginToDeepseek({ loginValue, password, deviceId }) {
     responseText = await response.text();
     result = JSON.parse(responseText);
   } catch {
-    const preview = responseText ? responseText.slice(0, 500) : "(empty body)";
-    const headers = [...response.headers.entries()]
-      .map(([key, value]) => `  ${key}: ${value}`)
-      .join("\n");
-    throw new Error(
-      `DeepSeek login failed (HTTP ${response.status}): unable to parse response. ` +
-      `This may indicate network connectivity issues to chat.deepseek.com\n` +
-      `Response headers:\n${headers}\n` +
-      `Response body preview: ${preview}`
-    );
+    throw createSafeUpstreamError("DeepSeek login failed: unable to parse upstream response", {
+      status: response.status,
+      body: responseText
+    });
   }
 
   if (result.data?.biz_code !== 0) {
@@ -68,15 +68,20 @@ export async function loginToDeepseek({ loginValue, password, deviceId }) {
 }
 
 export async function refreshAccountToken(account) {
+  if (!account.loginValue || !account.password || account.credentialMode !== "persistent") {
+    throw new Error("Account credentials are not persisted; rebind this account to refresh the session");
+  }
+
+  const accountWithProfile = withResolvedDeepseekClientProfile(account);
   const loginResult = await loginToDeepseek({
-    loginValue: account.loginValue,
-    password: account.password,
-    deviceId: account.deviceId
+    loginValue: accountWithProfile.loginValue,
+    password: accountWithProfile.password,
+    deviceProfile: accountWithProfile.deviceProfile
   });
 
   const user = loginResult.data.biz_data.user;
   const refreshedAccount = saveAccount({
-    ...account,
+    ...accountWithProfile,
     token: user.token,
     ssoId: user.id,
     status: "online"
