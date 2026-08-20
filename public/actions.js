@@ -43,6 +43,7 @@ function bindWorkspaceActions({
   onRetryCaptcha,
   onToggleIncognito,
   onToggleSharedAccountMode,
+  onToggleToolParsingMode,
   setStatus
 }) {
   els["logout-button"].onclick = async () => {
@@ -100,6 +101,18 @@ function bindWorkspaceActions({
       setStatus(els["shared-mode-status"], "已保存。");
     } catch (error) {
       setStatus(els["shared-mode-status"], error.message);
+    }
+  };
+
+  els["tool-parsing-form"].onsubmit = async (event) => {
+    event.preventDefault();
+    setStatus(els["tool-parsing-status"], "保存中...");
+
+    try {
+      await onToggleToolParsingMode(els["tool-parsing-toggle"].checked);
+      setStatus(els["tool-parsing-status"], "已保存。");
+    } catch (error) {
+      setStatus(els["tool-parsing-status"], error.message);
     }
   };
 
@@ -291,7 +304,9 @@ function bindSystemSettingsActions({ els, onUpdateSystemSettings, setStatus }) {
           maxRetries: els["settings-max-retries"].value,
           cooldownMs: els["settings-cooldown-ms"].value
         },
-        chainOfThoughtOverrideEnabled: els["settings-cot-override"].checked
+        inputContentLimit: els["settings-input-content-limit"].value,
+        chainOfThoughtOverrideEnabled: els["settings-cot-override"].checked,
+        toolParsingModeEnabled: els["settings-tool-parsing-mode"].checked
       });
       els["settings-yescaptcha-key"].value = "";
       els["settings-clear-yescaptcha-key"].checked = false;

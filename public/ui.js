@@ -389,6 +389,12 @@ export function renderSystemSettingsForm({ accounts, elements, isAdmin, settings
   if (elements.chainOfThoughtOverride) {
     elements.chainOfThoughtOverride.checked = settings?.chainOfThoughtOverrideEnabled === true;
   }
+  if (elements.toolParsingMode) {
+    elements.toolParsingMode.checked = settings?.toolParsingModeEnabled === true;
+  }
+  if (elements.inputContentLimit) {
+    elements.inputContentLimit.value = settings?.inputContentLimit ?? 160000;
+  }
   elements.maxRetries.value = captcha.maxRetries ?? 3;
   elements.cooldownMs.value = captcha.cooldownMs ?? 60000;
   elements.visionAccount.innerHTML = [
@@ -401,10 +407,12 @@ export function renderSystemSettingsForm({ accounts, elements, isAdmin, settings
 
   [
     elements.endpoint,
+    elements.inputContentLimit,
     elements.yescaptchaKey,
     elements.clearKey,
     elements.autoSolve,
     elements.chainOfThoughtOverride,
+    elements.toolParsingMode,
     elements.visionFallback,
     elements.visionAccount,
     elements.maxRetries,

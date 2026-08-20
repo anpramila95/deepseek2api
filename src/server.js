@@ -55,6 +55,13 @@ const server = createServer(async (request, response) => {
   }
 });
 
+// Chat generations can remain quiet while the upstream model transitions from
+// reasoning to its final answer. Do not let Node's socket/request timers end a
+// still-live SSE exchange during that interval; the SSE handlers send their
+// own keep-alive comments while they wait.
+server.requestTimeout = 0;
+server.timeout = 0;
+
 server.listen(config.port, () => {
   console.log(`Server listening on http://127.0.0.1:${config.port}`);
 });

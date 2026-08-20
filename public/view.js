@@ -73,6 +73,20 @@ function describeChainOfThoughtOverride(state) {
   return "当前：关闭（实验性）";
 }
 
+function describeToolParsingMode(state) {
+  const behavior = "检测到正文中的 tool 字段后，将只把正文和工具提示词交给快速模式整理为正式工具调用。";
+
+  if (state?.globalEnabled) {
+    return `当前：管理员已全局开启。${behavior}`;
+  }
+
+  if (state?.ownerEnabled) {
+    return `当前：仅自己开启。${behavior}`;
+  }
+
+  return `当前：关闭。${behavior}`;
+}
+
 function getIncognitoSummary(incognito, role) {
   if (!incognito.effectiveEnabled) {
     return "关闭";
@@ -199,6 +213,7 @@ export function createView(options) {
   function renderSettings() {
     const state = currentState();
     const chainOfThoughtOverride = state.session.chainOfThoughtOverride ?? {};
+    const toolParsingMode = state.session.toolParsingMode ?? {};
     const incognito = state.session.incognito;
     const sharedMode = state.session.sharedAccountMode ?? { enabled: false, canToggle: false };
     const label = incognito.scope === "global" ? "全员开启" : "仅自己开启";
@@ -222,6 +237,12 @@ export function createView(options) {
       describeChainOfThoughtOverride(chainOfThoughtOverride)
     );
     els["cot-override-toggle"].checked = Boolean(chainOfThoughtOverride.ownerEnabled);
+    setText(els["tool-parsing-label"], "仅自己开启");
+    setText(
+      els["tool-parsing-description"],
+      describeToolParsingMode(toolParsingMode)
+    );
+    els["tool-parsing-toggle"].checked = Boolean(toolParsingMode.ownerEnabled);
     els["shared-mode-panel"].classList.toggle("hidden", !canToggleSharedMode);
     setText(els["shared-mode-description"], describeSharedMode(sharedMode, incognito));
     setText(els["shared-mode-label"], sharedMode.enabled ? "关闭大锅饭" : "开启大锅饭");
@@ -309,7 +330,9 @@ export function createView(options) {
         clearKey: els["settings-clear-yescaptcha-key"],
         cooldownMs: els["settings-cooldown-ms"],
         endpoint: els["settings-endpoint"],
+        inputContentLimit: els["settings-input-content-limit"],
         chainOfThoughtOverride: els["settings-cot-override"],
+        toolParsingMode: els["settings-tool-parsing-mode"],
         maxRetries: els["settings-max-retries"],
         visionAccount: els["settings-vision-account"],
         visionFallback: els["settings-vision-fallback"],

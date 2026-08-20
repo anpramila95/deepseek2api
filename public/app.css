@@ -1528,14 +1528,17 @@ details.message-section.thinking > [data-section-text] {
 }
 
 .key-card-actions {
+  pointer-events: auto;
   position: absolute;
   right: 3px;
   top: 3px;
+  z-index: 2;
 }
 
 .key-card-actions .icon-button {
   height: 30px;
   min-height: 30px;
+  pointer-events: auto;
   width: 30px;
 }
 

@@ -1,30 +1,23 @@
-import { createDeepseekDeltaDecoder, createSseParser } from "../utils/deepseek-sse.js";
 import { createChatSession, deleteChatSession } from "./chat-session-service.js";
+import { consumeDeepseekCompletion } from "./deepseek-completion-stream.js";
 import { uploadOpenAiVisionFiles } from "./deepseek-file-service.js";
-import { proxyDeepseekRequest } from "./deepseek-proxy.js";
+import { startDeepseekChatCompletion } from "./deepseek-chat-response.js";
 
-const THINK_OPEN_TAG = "<think>";
-const THINK_CLOSE_TAG = "</think>";
-
-function startCompletion({ account, requestOptions, sessionId }) {
-  return proxyDeepseekRequest({
+function startCompletion({ account, inputContentLimit, requestOptions, sessionId }) {
+  return startDeepseekChatCompletion({
     account,
-    method: "POST",
-    path: "/chat/completion",
-    body: Buffer.from(
-      JSON.stringify({
-        chat_session_id: sessionId,
-        parent_message_id: null,
-        model_type: requestOptions.model.modelType,
-        prompt: requestOptions.prompt,
-        ref_file_ids: requestOptions.refFileIds ?? [],
-        thinking_enabled: requestOptions.model.thinkingEnabled,
-        search_enabled: requestOptions.model.searchEnabled,
-        action: null,
-        preempt: false
-      })
-    ),
-    headers: { "content-type": "application/json" }
+    inputContentLimit,
+    body: {
+      chat_session_id: sessionId,
+      parent_message_id: null,
+      model_type: requestOptions.model.modelType,
+      prompt: requestOptions.prompt,
+      ref_file_ids: requestOptions.refFileIds ?? [],
+      thinking_enabled: requestOptions.model.thinkingEnabled,
+      search_enabled: requestOptions.model.searchEnabled,
+      action: null,
+      preempt: false
+    }
   });
 }
 
@@ -45,103 +38,72 @@ async function prepareRequestOptions({ account, requestOptions, sessionId }) {
   };
 }
 
-function createThinkingTagger() {
-  let currentKind = null;
-
-  return {
-    flush() {
-      if (currentKind !== "thinking") {
-        return "";
-      }
-
-      currentKind = "response";
-      return THINK_CLOSE_TAG;
-    },
-    push(delta) {
-      if (!delta?.text) {
-        return "";
-      }
-
-      let prefix = "";
-      if (delta.kind !== currentKind) {
-        if (currentKind === "thinking") {
-          prefix += THINK_CLOSE_TAG;
-        }
-        if (delta.kind === "thinking") {
-          prefix += THINK_OPEN_TAG;
-        }
-        currentKind = delta.kind;
-      }
-
-      return prefix + delta.text;
-    }
-  };
-}
-
-async function consumeTaggedStream(stream, onText) {
-  if (!stream) {
-    return;
-  }
-
-  const decoder = new TextDecoder();
-  const deltaDecoder = createDeepseekDeltaDecoder();
-  const tagger = createThinkingTagger();
-  const parser = createSseParser(({ data }) => {
-    const text = tagger.push(deltaDecoder.consume(data));
-    if (text) {
-      onText(text);
-    }
-  });
-
-  for await (const chunk of stream) {
-    parser.push(decoder.decode(chunk, { stream: true }));
-  }
-
-  parser.flush();
-  const suffix = tagger.flush();
-  if (suffix) {
-    onText(suffix);
-  }
-}
-
 async function withCompletionSession({ account, deleteAfterFinish, onComplete }) {
   const sessionId = await createChatSession(account);
 
-  try {
-    return await onComplete(sessionId);
-  } finally {
-    if (deleteAfterFinish) {
-      await deleteChatSession(account, sessionId);
-    }
+  // Keep an incognito session alive when the upstream stream is incomplete
+  // or failed.  The completion consumer only marks `completed: true` after a
+  // close/full-message response has been observed (including any automatic
+  // resume/continue attempts), so cleanup cannot erase a recoverable chat.
+  const result = await onComplete(sessionId);
+  if (deleteAfterFinish && result?.completed === true) {
+    await deleteChatSession(result.refreshedAccount ?? account, sessionId);
   }
+
+  return result;
 }
 
-export async function collectCompletionContent({ account, deleteAfterFinish = false, requestOptions }) {
+export async function collectCompletionContent({
+  account,
+  deleteAfterFinish = false,
+  inputContentLimit,
+  requestOptions
+}) {
   return withCompletionSession({
     account,
     deleteAfterFinish,
     onComplete: async (sessionId) => {
       const preparedOptions = await prepareRequestOptions({ account, requestOptions, sessionId });
-      const { response } = await startCompletion({ account, requestOptions: preparedOptions, sessionId });
-      let content = "";
-
-      await consumeTaggedStream(response.body, (text) => {
-        content += text;
+      const { refreshedAccount, response } = await startCompletion({
+        account,
+        inputContentLimit,
+        requestOptions: preparedOptions,
+        sessionId
       });
-
-      return { content };
+      return consumeDeepseekCompletion({
+        account: refreshedAccount ?? account,
+        response,
+        sessionId
+      });
     }
   });
 }
 
-export async function streamCompletionContent({ account, deleteAfterFinish = false, onText, requestOptions }) {
+export async function streamCompletionContent({
+  account,
+  deleteAfterFinish = false,
+  inputContentLimit,
+  onDelta,
+  onText,
+  requestOptions
+}) {
   return withCompletionSession({
     account,
     deleteAfterFinish,
     onComplete: async (sessionId) => {
       const preparedOptions = await prepareRequestOptions({ account, requestOptions, sessionId });
-      const { response } = await startCompletion({ account, requestOptions: preparedOptions, sessionId });
-      await consumeTaggedStream(response.body, onText);
+      const { refreshedAccount, response } = await startCompletion({
+        account,
+        inputContentLimit,
+        requestOptions: preparedOptions,
+        sessionId
+      });
+      return consumeDeepseekCompletion({
+        account: refreshedAccount ?? account,
+        onDelta: onDelta ?? (onText ? (delta) => onText(delta.text) : undefined),
+        response,
+        sessionId
+      });
     }
   });
 }

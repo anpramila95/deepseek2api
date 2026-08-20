@@ -106,6 +106,10 @@ function removeLocalOwnerState(state, ownerIds, userIds) {
     Object.entries(state.chainOfThoughtOverride.owners)
       .filter(([ownerId]) => !ownerIds.has(ownerId))
   );
+  const nextToolParsingModeOwners = Object.fromEntries(
+    Object.entries(state.toolParsingMode.owners)
+      .filter(([ownerId]) => !ownerIds.has(ownerId))
+  );
 
   return {
     ...state,
@@ -120,6 +124,10 @@ function removeLocalOwnerState(state, ownerIds, userIds) {
     chainOfThoughtOverride: {
       ...state.chainOfThoughtOverride,
       owners: nextOverrideOwners
+    },
+    toolParsingMode: {
+      ...state.toolParsingMode,
+      owners: nextToolParsingModeOwners
     }
   };
 }

@@ -91,11 +91,13 @@ export function resolveRetryAfterMs(headers, fallback = DEFAULT_RETRY_AFTER_MS) 
   return parseRetryAfter(value) ?? fallback;
 }
 
-export function createProtocolRequestContext(account, path) {
+export function createProtocolRequestContext(account, path, { method = "GET" } = {}) {
   const profile = resolveDeepseekClientProfile(account ?? {});
   const origin = new URL(config.deepseekBaseUrl).origin;
   const requestId = randomUUID();
   const traceId = randomUUID();
+  const normalizedMethod = String(method).toUpperCase();
+  const includesOrigin = normalizedMethod !== "GET" && normalizedMethod !== "HEAD";
 
   return {
     profile,
@@ -103,10 +105,13 @@ export function createProtocolRequestContext(account, path) {
     traceId,
     targetPath: resolveDeepseekApiPath(path),
     headers: createDeepseekClientHeaders(profile, {
-      "x-request-id": requestId,
-      "x-trace-id": traceId,
-      origin,
-      referer: `${origin}/`
+      accept: "application/json, text/plain, */*",
+      priority: "u=1, i",
+      referer: `${origin}/`,
+      "sec-fetch-dest": "empty",
+      "sec-fetch-mode": "cors",
+      "sec-fetch-site": "same-origin",
+      ...(includesOrigin ? { origin } : {})
     })
   };
 }

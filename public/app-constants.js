@@ -24,7 +24,9 @@ export const INITIAL_STATE = Object.freeze({
       maxRetries: 3,
       cooldownMs: 60000
     },
-    chainOfThoughtOverrideEnabled: false
+    inputContentLimit: 160000,
+    chainOfThoughtOverrideEnabled: false,
+    toolParsingModeEnabled: false
   },
   selectedAccountId: "",
   selectedSessionId: "",
@@ -54,9 +56,11 @@ export const ELEMENT_IDS = [
   "register-invite-code", "register-invite-group", "register-password", "register-status", "register-username",
   "refresh-request-logs", "request-log-list", "response-mode", "role-label", "send-button", "session-caption", "session-count", "sessions",
   "settings-auto-solve", "settings-clear-yescaptcha-key", "settings-cooldown-ms", "settings-endpoint",
-  "settings-form", "settings-max-retries", "settings-origin", "settings-registration-summary",
+  "settings-form", "settings-input-content-limit", "settings-max-retries", "settings-origin", "settings-registration-summary",
   "settings-status", "settings-vision-fallback", "settings-vision-account", "settings-cot-override",
-  "settings-yescaptcha-key",
+  "settings-tool-parsing-mode", "settings-yescaptcha-key",
   "shared-mode-description", "shared-mode-form", "shared-mode-label", "shared-mode-panel",
-  "shared-mode-status", "shared-mode-summary", "shared-mode-toggle", "tab-admin", "user-summary"
+  "shared-mode-status", "shared-mode-summary", "shared-mode-toggle", "tab-admin", "user-summary",
+  "tool-parsing-description", "tool-parsing-form", "tool-parsing-label", "tool-parsing-status",
+  "tool-parsing-toggle"
 ];

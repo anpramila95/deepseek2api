@@ -1,37 +1,7 @@
-import { createDeepseekDeltaDecoder, createSseParser } from "../utils/deepseek-sse.js";
-import { proxyDeepseekRequest } from "./deepseek-proxy.js";
+import { consumeDeepseekCompletion } from "./deepseek-completion-stream.js";
+import { startChunkedDeepseekCompletion } from "./deepseek-input-chunking.js";
 
-const CHAT_COMPLETION_PATH = "/chat/completion";
-const JSON_HEADERS = Object.freeze({
-  "content-type": "application/json"
-});
 const STREAM_CONTENT_TYPE = "text/event-stream";
-
-function createStatusError(statusCode, message) {
-  const error = new Error(message);
-  error.statusCode = statusCode;
-  return error;
-}
-
-function resolveErrorMessage(payload, fallback) {
-  return payload?.data?.biz_msg || payload?.msg || payload?.error || fallback;
-}
-
-async function parsePayload(response) {
-  const contentType = response.headers.get("content-type") ?? "";
-
-  if (contentType.includes("application/json")) {
-    return response.json();
-  }
-
-  const text = await response.text();
-
-  try {
-    return JSON.parse(text);
-  } catch {
-    return { error: text || `HTTP ${response.status}` };
-  }
-}
 
 function appendSection(sections, delta) {
   if (!delta?.text) {
@@ -52,6 +22,31 @@ function appendSection(sections, delta) {
   return [...sections, { kind: delta.kind, content: delta.text }];
 }
 
+function createCollectedPayload({ readyPayload, result, sections: providedSections }) {
+  const sections = providedSections ?? [
+    ...(result.reasoningContent ? [{ kind: "thinking", content: result.reasoningContent }] : []),
+    ...(result.content ? [{ kind: "response", content: result.content }] : [])
+  ];
+
+  return {
+    code: 0,
+    msg: "",
+    data: {
+      biz_code: 0,
+      biz_msg: "",
+      biz_data: {
+        ready: readyPayload,
+        response_message_id: result.responseMessageId ?? readyPayload?.response_message_id ?? null,
+        message: {
+          role: "ASSISTANT",
+          status: result.status ?? null,
+          sections
+        }
+      }
+    }
+  };
+}
+
 export function sanitizeChatCompletionBody(body) {
   const payload = { ...(body ?? {}) };
   delete payload.stream;
@@ -62,82 +57,127 @@ export function createChatCompletionRequestBody(body) {
   return Buffer.from(JSON.stringify(sanitizeChatCompletionBody(body)));
 }
 
-export async function startDeepseekChatCompletion({ account, body }) {
-  return proxyDeepseekRequest({
+export async function startDeepseekChatCompletion({ account, body, inputContentLimit }) {
+  return startChunkedDeepseekCompletion({
     account,
-    method: "POST",
-    path: CHAT_COMPLETION_PATH,
-    body: createChatCompletionRequestBody(body),
-    headers: JSON_HEADERS
+    body,
+    inputContentLimit
   });
 }
 
 export async function collectDeepseekChatResponse({ account, body }) {
-  const { response } = await startDeepseekChatCompletion({ account, body });
-  const contentType = response.headers.get("content-type") ?? "";
+  const { refreshedAccount, response } = await startDeepseekChatCompletion({ account, body });
 
-  if (!contentType.includes(STREAM_CONTENT_TYPE)) {
-    const payload = await parsePayload(response);
-    const bizCode = payload?.data?.biz_code;
-
-    if (!response.ok || (typeof bizCode === "number" && bizCode !== 0) || payload?.error) {
-      throw createStatusError(
-        response.ok ? 400 : response.status,
-        resolveErrorMessage(payload, `HTTP ${response.status}`)
-      );
-    }
-
-    return payload;
-  }
-
-  if (!response.ok || !response.body) {
-    const payload = await parsePayload(response);
-    throw createStatusError(
-      response.ok ? 502 : response.status,
-      resolveErrorMessage(payload, `HTTP ${response.status}`)
-    );
-  }
-
-  const decoder = new TextDecoder();
-  const deltaDecoder = createDeepseekDeltaDecoder();
   let readyPayload = null;
   let sections = [];
-  const parser = createSseParser(({ data, event }) => {
-    if (!data) {
-      return;
-    }
-
-    if (event === "ready") {
-      readyPayload = JSON.parse(data);
-      return;
-    }
-
-    if (event !== "message") {
-      return;
-    }
-
-    sections = appendSection(sections, deltaDecoder.consume(data));
+  const result = await consumeDeepseekCompletion({
+    account: refreshedAccount ?? account,
+    onDelta: (delta) => {
+      sections = appendSection(sections, delta);
+    },
+    onReady: (payload) => {
+      readyPayload = payload;
+    },
+    response,
+    sessionId: body?.chat_session_id
   });
 
-  for await (const chunk of response.body) {
-    parser.push(decoder.decode(chunk, { stream: true }));
+  return {
+    completed: result.completed === true,
+    refreshedAccount: result.refreshedAccount ?? refreshedAccount ?? account,
+    result,
+    payload: createCollectedPayload({ readyPayload, result, sections })
+  };
+}
+
+function writeSseEvent(response, event, payload) {
+  if (event) {
+    response.write(`event: ${event}\n`);
   }
-  parser.flush();
+  if (payload !== undefined) {
+    response.write(`data: ${JSON.stringify(payload)}\n`);
+  }
+  response.write("\n");
+}
+
+/**
+ * Stream a chat completion through the protocol-aware consumer. The public
+ * proxy receives a single logical stream even when the upstream requires
+ * one or more resume/continue requests.
+ */
+export async function streamDeepseekChatResponse({ account, body, response }) {
+  const { refreshedAccount, response: upstream } = await startDeepseekChatCompletion({
+    account,
+    body
+  });
+  const contentType = upstream.headers.get("content-type") ?? "";
+
+  if (!contentType.includes(STREAM_CONTENT_TYPE)) {
+    const result = await consumeDeepseekCompletion({
+      account: refreshedAccount ?? account,
+      response: upstream,
+      sessionId: body?.chat_session_id
+    });
+    return {
+      completed: result.completed === true,
+      refreshedAccount: result.refreshedAccount ?? refreshedAccount ?? account,
+      result,
+      payload: createCollectedPayload({ readyPayload: null, result })
+    };
+  }
+
+  response.writeHead(upstream.status, {
+    "cache-control": "no-cache, no-transform",
+    connection: "keep-alive",
+    "content-type": "text/event-stream; charset=utf-8",
+    "x-accel-buffering": "no"
+  });
+  response.flushHeaders?.();
+
+  let readyPayload = null;
+  let result;
+  try {
+    result = await consumeDeepseekCompletion({
+      account: refreshedAccount ?? account,
+      onDelta: (delta) => {
+        const path = delta.kind === "thinking"
+          ? "response/thinking_content"
+          : "response/content";
+        response.write(`data: ${JSON.stringify({ p: path, o: "APPEND", v: delta.text })}\n\n`);
+      },
+      onReady: (payload) => {
+        if (readyPayload) {
+          return;
+        }
+        readyPayload = payload;
+        writeSseEvent(response, "ready", payload);
+      },
+      response: upstream,
+      sessionId: body?.chat_session_id
+    });
+  } catch (error) {
+    if (!response.writableEnded && !response.destroyed) {
+      writeSseEvent(response, "hint", {
+        type: "error",
+        content: error.message,
+        clear_response: false,
+        finish_reason: null
+      });
+      writeSseEvent(response, "close", { click_behavior: "retry" });
+      response.end();
+    }
+    error.responseStarted = true;
+    throw error;
+  }
+
+  writeSseEvent(response, "finish", {});
+  writeSseEvent(response, "close", { click_behavior: "none" });
+  response.end();
 
   return {
-    code: 0,
-    msg: "",
-    data: {
-      biz_code: 0,
-      biz_msg: "",
-      biz_data: {
-        ready: readyPayload,
-        response_message_id: readyPayload?.response_message_id ?? null,
-        message: {
-          role: "ASSISTANT",
-          sections
-        }
-      }
-    }
+    completed: result.completed === true,
+    refreshedAccount: result.refreshedAccount ?? refreshedAccount ?? account,
+    result,
+    payload: createCollectedPayload({ readyPayload, result })
   };
 }

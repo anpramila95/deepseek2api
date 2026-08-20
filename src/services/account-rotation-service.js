@@ -1,31 +1,41 @@
 import { listUsableAccounts, listUsableAccountsForOwner } from "./account-service.js";
 import { isSharedAccountModeEnabled } from "./shared-account-mode-service.js";
 
-const nextAccountIndexes = new Map();
-const SHARED_ACCOUNT_MODE_CURSOR = "shared-account-mode";
+const lastAccountIds = new Map();
+const SHARED_ACCOUNT_POOL = "shared";
 
-function listApiKeyAccounts(ownerId) {
-  return ownerId === "admin" ? listUsableAccounts() : listUsableAccountsForOwner(ownerId);
+function resolveAccountPool(ownerId, sharedModeEnabled) {
+  return sharedModeEnabled ? listUsableAccounts() : listUsableAccountsForOwner(ownerId);
 }
 
-function resolveStartIndex(accounts, preferredAccountId) {
-  const preferredIndex = accounts.findIndex((account) => account.id === preferredAccountId);
-  return preferredIndex === -1 ? 0 : preferredIndex;
+function resolvePoolKey(ownerId, sharedModeEnabled) {
+  return sharedModeEnabled ? SHARED_ACCOUNT_POOL : `owner:${ownerId}`;
 }
 
-export function takeRoundRobinAccount(apiKeyRecord) {
+function resolveNextIndex(accounts, lastAccountId) {
+  const lastIndex = accounts.findIndex((account) => account.id === lastAccountId);
+  return lastIndex === -1 ? 0 : (lastIndex + 1) % accounts.length;
+}
+
+function takeAccountAfter(apiKeyRecord, afterAccountId) {
   const sharedModeEnabled = isSharedAccountModeEnabled();
-  const accounts = sharedModeEnabled ? listUsableAccounts() : listApiKeyAccounts(apiKeyRecord.ownerId);
+  const accounts = resolveAccountPool(apiKeyRecord.ownerId, sharedModeEnabled);
   if (!accounts.length) {
     return null;
   }
 
-  const cursorKey = sharedModeEnabled ? SHARED_ACCOUNT_MODE_CURSOR : apiKeyRecord.id;
-  const nextIndex = nextAccountIndexes.get(cursorKey);
-  const currentIndex = typeof nextIndex === "number"
-    ? nextIndex % accounts.length
-    : resolveStartIndex(accounts, apiKeyRecord.accountId);
+  const poolKey = resolvePoolKey(apiKeyRecord.ownerId, sharedModeEnabled);
+  const nextAccount = accounts[resolveNextIndex(accounts, afterAccountId)];
+  lastAccountIds.set(poolKey, nextAccount.id);
+  return nextAccount;
+}
 
-  nextAccountIndexes.set(cursorKey, (currentIndex + 1) % accounts.length);
-  return accounts[currentIndex];
+export function takeRoundRobinAccount(apiKeyRecord) {
+  const sharedModeEnabled = isSharedAccountModeEnabled();
+  const poolKey = resolvePoolKey(apiKeyRecord.ownerId, sharedModeEnabled);
+  return takeAccountAfter(apiKeyRecord, lastAccountIds.get(poolKey));
+}
+
+export function takeNextRoundRobinAccount(apiKeyRecord, currentAccountId) {
+  return takeAccountAfter(apiKeyRecord, currentAccountId);
 }

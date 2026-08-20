@@ -6,6 +6,7 @@ import { listPublicInvites } from "./invite-service.js";
 import { getRegistrationSettings } from "./registration-service.js";
 import { buildSharedAccountModePayload } from "./shared-account-mode-service.js";
 import { getPublicSystemSettings } from "./system-settings-service.js";
+import { getToolParsingModeState } from "./tool-parsing-mode-service.js";
 import { listPublicUsers } from "./user-service.js";
 import { maskIdentifier } from "../utils/privacy.js";
 
@@ -21,6 +22,8 @@ export function toPublicAccount(account) {
     mobileMasked: maskIdentifier(account.mobileMasked),
     credentialMode: account.credentialMode ?? "legacy",
     status: account.status ?? (account.token ? "online" : "offline"),
+    dataOptimizationDisabled: account.dataOptimizationDisabled === true,
+    lastPrivacyUpdate: account.lastPrivacyUpdate ?? null,
     settingsReported: Boolean(account.settingsReported),
     lastSettingsReport: account.lastSettingsReport ?? null,
     captchaState: account.captchaState ?? null,
@@ -51,6 +54,16 @@ function toChainOfThoughtOverridePayload(session) {
   };
 }
 
+function toToolParsingModePayload(session) {
+  const state = getToolParsingModeState(session.ownerId);
+
+  return {
+    ...state,
+    scope: "self",
+    scopeEnabled: state.ownerEnabled
+  };
+}
+
 export function buildAdminData() {
   return {
     invites: listPublicInvites(),
@@ -72,6 +85,7 @@ export function buildSessionPayload(session) {
     registration: getRegistrationSettings(),
     systemSettings: getPublicSystemSettings(),
     chainOfThoughtOverride: toChainOfThoughtOverridePayload(session),
+    toolParsingMode: toToolParsingModePayload(session),
     incognito: toIncognitoPayload(session),
     sharedAccountMode: buildSharedAccountModePayload(session)
   };

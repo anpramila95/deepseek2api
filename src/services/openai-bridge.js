@@ -4,8 +4,10 @@ import { isChainOfThoughtOverrideEnabledForOwner } from "./chain-of-thought-over
 import { collectCompletionContent, streamCompletionContent } from "./openai-completion-runner.js";
 import { assertNoLegacySearchOptions, resolveOpenAiModel } from "./openai-request.js";
 import { appendExpertPromptSuffix } from "./expert-prompt-service.js";
+import { withDeepseekMessageFrequencyRetry } from "./deepseek-frequency-retry.js";
 import { createToolSieve, extractToolAwareOutput } from "./openai-tool-sieve.js";
 import { buildOpenAiPrompt } from "./openai-tool-prompt.js";
+import { applyToolParsingMode } from "./openai-tool-parsing-mode.js";
 import { ensureToolChoiceSatisfied, hasChatToolingRequest } from "./openai-tool-policy.js";
 import { createOpenAiError } from "./openai-error.js";
 
@@ -75,12 +77,25 @@ export function resolveCompletionRequest({ body, ownerId, toolCallsEnabled }) {
     model,
     prompt,
     imageInputs,
+    toolPrompt: promptRequest.toolPrompt,
     toolChoicePolicy: promptRequest.toolChoicePolicy,
     toolNames: promptRequest.toolNames
   };
 }
 
-function buildChatCompletionPayload(completionId, requestOptions, content) {
+function buildAssistantMessage(requestOptions, message, reasoningContent) {
+  if (!requestOptions.model.thinkingEnabled && !reasoningContent) {
+    return message;
+  }
+
+  return {
+    ...message,
+    reasoning_content: reasoningContent
+  };
+}
+
+export function buildChatCompletionPayload(completionId, requestOptions, completion) {
+  const { content, reasoningContent } = completion;
   const parsed = requestOptions.toolNames.length
     ? extractToolAwareOutput(content, requestOptions.toolNames)
     : { content, toolCalls: [] };
@@ -97,11 +112,11 @@ function buildChatCompletionPayload(completionId, requestOptions, content) {
         {
           index: 0,
           finish_reason: "tool_calls",
-          message: {
+          message: buildAssistantMessage(requestOptions, {
             role: "assistant",
             content: parsed.content.length ? parsed.content : null,
             tool_calls: createChatToolCalls(parsed.toolCalls)
-          }
+          }, reasoningContent)
         }
       ]
     };
@@ -116,16 +131,16 @@ function buildChatCompletionPayload(completionId, requestOptions, content) {
       {
         index: 0,
         finish_reason: "stop",
-        message: {
+        message: buildAssistantMessage(requestOptions, {
           role: "assistant",
           content: parsed.content
-        }
+        }, reasoningContent)
       }
     ]
   };
 }
 
-function buildChunkPayload(completionId, model, delta, finishReason) {
+export function buildChunkPayload(completionId, model, delta, finishReason) {
   const choice = finishReason
     ? { index: 0, delta: {}, finish_reason: finishReason }
     : { index: 0, delta };
@@ -143,21 +158,63 @@ function writeSseChunk(response, payload) {
   response.write(`data: ${JSON.stringify(payload)}\n\n`);
 }
 
+function writeSseHeartbeat(response) {
+  if (!response.destroyed && !response.writableEnded) {
+    response.write(": keep-alive\n\n");
+  }
+}
+
+export function buildOpenAiTextDelta(delta) {
+  return delta.kind === "thinking"
+    ? { reasoning_content: delta.text }
+    : { content: delta.text };
+}
+
+function startSseHeartbeat(response, intervalMs = 10_000) {
+  const timer = setInterval(() => {
+    writeSseHeartbeat(response);
+  }, intervalMs);
+  timer.unref?.();
+  return () => clearInterval(timer);
+}
+
 export async function collectOpenAiResponse({
   account,
   body,
   deleteAfterFinish = false,
+  maxFrequencyRetries,
+  onFrequencyRetry,
   ownerId,
-  toolCallsEnabled = false
+  retryDelayMs,
+  retrySleep,
+  selectNextAccount,
+  toolCallsEnabled = false,
+  toolParsingModeEnabled = false
 }) {
   const requestOptions = resolveCompletionRequest({ body, ownerId, toolCallsEnabled });
-  const { content } = await collectCompletionContent({
+  const completion = await withDeepseekMessageFrequencyRetry({
     account,
-    deleteAfterFinish,
-    requestOptions
+    maxRetries: maxFrequencyRetries,
+    onRetry: onFrequencyRetry,
+    operation: async (activeAccount) => {
+      const initialCompletion = await collectCompletionContent({
+        account: activeAccount,
+        deleteAfterFinish,
+        requestOptions
+      });
+      return applyToolParsingMode({
+        account: activeAccount,
+        completion: initialCompletion,
+        enabled: toolParsingModeEnabled,
+        requestOptions
+      });
+    },
+    retryDelayMs,
+    selectNextAccount,
+    sleep: retrySleep
   });
 
-  return buildChatCompletionPayload(createCompletionId(), requestOptions, content);
+  return buildChatCompletionPayload(createCompletionId(), requestOptions, completion);
 }
 
 export async function streamOpenAiResponse(options) {
@@ -165,9 +222,16 @@ export async function streamOpenAiResponse(options) {
     account,
     body,
     deleteAfterFinish = false,
+    heartbeatIntervalMs,
+    maxFrequencyRetries,
+    onFrequencyRetry,
     ownerId,
     response,
-    toolCallsEnabled = false
+    retryDelayMs,
+    retrySleep,
+    selectNextAccount,
+    toolCallsEnabled = false,
+    toolParsingModeEnabled = false
   } = options;
   const completionId = createCompletionId();
   const requestOptions = resolveCompletionRequest({ body, ownerId, toolCallsEnabled });
@@ -205,21 +269,126 @@ export async function streamOpenAiResponse(options) {
     toolCallIndex += calls.length;
   };
 
-  await streamCompletionContent({
-    account,
-    deleteAfterFinish,
-    onText: (delta) => {
-      if (!toolSieve) {
-        writeSseChunk(response, buildChunkPayload(
-          completionId,
-          requestOptions.model.id,
-          { content: delta }
-        ));
-        return;
-      }
+  const finishStream = () => {
+    writeSseChunk(response, buildChunkPayload(
+      completionId,
+      requestOptions.model.id,
+      {},
+      sawToolCall ? "tool_calls" : "stop"
+    ));
+    response.end("data: [DONE]\n\n");
+  };
 
-      const events = toolSieve.push(delta);
-      events.forEach((event) => {
+  const emitBufferedCompletion = (completion) => {
+    if (completion.reasoningContent) {
+      writeSseChunk(response, buildChunkPayload(
+        completionId,
+        requestOptions.model.id,
+        { reasoning_content: completion.reasoningContent }
+      ));
+    }
+
+    const parsed = requestOptions.toolNames.length
+      ? extractToolAwareOutput(completion.content, requestOptions.toolNames)
+      : { content: completion.content, toolCalls: [] };
+    ensureToolChoiceSatisfied(requestOptions.toolChoicePolicy, parsed.toolCalls);
+
+    if (parsed.content) {
+      writeSseChunk(response, buildChunkPayload(
+        completionId,
+        requestOptions.model.id,
+        { content: parsed.content }
+      ));
+    }
+    emitToolCalls(parsed.toolCalls);
+  };
+
+  const stopHeartbeat = startSseHeartbeat(response, heartbeatIntervalMs);
+  const handleFrequencyRetry = async (retry) => {
+    writeSseHeartbeat(response);
+    await onFrequencyRetry?.(retry);
+  };
+  try {
+    if (toolParsingModeEnabled && requestOptions.toolNames.length) {
+      const completion = await withDeepseekMessageFrequencyRetry({
+        account,
+        maxRetries: maxFrequencyRetries,
+        onRetry: handleFrequencyRetry,
+        operation: async (activeAccount) => {
+          const initialCompletion = await collectCompletionContent({
+            account: activeAccount,
+            deleteAfterFinish,
+            requestOptions
+          });
+          return applyToolParsingMode({
+            account: activeAccount,
+            completion: initialCompletion,
+            enabled: true,
+            requestOptions
+          });
+        },
+        retryDelayMs,
+        selectNextAccount,
+        sleep: retrySleep
+      });
+
+      emitBufferedCompletion(completion);
+      finishStream();
+      return;
+    }
+
+    await withDeepseekMessageFrequencyRetry({
+      account,
+      maxRetries: maxFrequencyRetries,
+      onRetry: handleFrequencyRetry,
+      operation: (activeAccount) => streamCompletionContent({
+        account: activeAccount,
+        deleteAfterFinish,
+        onDelta: (delta) => {
+          if (delta.kind === "thinking") {
+            writeSseChunk(response, buildChunkPayload(
+              completionId,
+              requestOptions.model.id,
+              buildOpenAiTextDelta(delta)
+            ));
+            return;
+          }
+
+          if (!toolSieve) {
+            writeSseChunk(response, buildChunkPayload(
+              completionId,
+              requestOptions.model.id,
+              buildOpenAiTextDelta(delta)
+            ));
+            return;
+          }
+
+          const events = toolSieve.push(delta.text);
+          events.forEach((event) => {
+            if (event.type === "tool_calls") {
+              emitToolCalls(event.calls ?? []);
+              return;
+            }
+
+            if (event.text) {
+              writeSseChunk(response, buildChunkPayload(
+                completionId,
+                requestOptions.model.id,
+                { content: event.text }
+              ));
+            }
+          });
+        },
+        requestOptions
+      }),
+      retryDelayMs,
+      selectNextAccount,
+      sleep: retrySleep
+    });
+
+    if (toolSieve) {
+      const tailEvents = toolSieve.flush();
+      tailEvents.forEach((event) => {
         if (event.type === "tool_calls") {
           emitToolCalls(event.calls ?? []);
           return;
@@ -233,33 +402,22 @@ export async function streamOpenAiResponse(options) {
           ));
         }
       });
-    },
-    requestOptions
-  });
+    }
 
-  if (toolSieve) {
-    const tailEvents = toolSieve.flush();
-    tailEvents.forEach((event) => {
-      if (event.type === "tool_calls") {
-        emitToolCalls(event.calls ?? []);
-        return;
-      }
-
-      if (event.text) {
-        writeSseChunk(response, buildChunkPayload(
-          completionId,
-          requestOptions.model.id,
-          { content: event.text }
-        ));
-      }
-    });
+    finishStream();
+  } catch (error) {
+    if (!response.writableEnded && !response.destroyed) {
+      writeSseChunk(response, {
+        error: {
+          message: error.message,
+          type: "upstream_error"
+        }
+      });
+      response.end("data: [DONE]\n\n");
+    }
+    error.responseStarted = true;
+    throw error;
+  } finally {
+    stopHeartbeat();
   }
-
-  writeSseChunk(response, buildChunkPayload(
-    completionId,
-    requestOptions.model.id,
-    {},
-    sawToolCall ? "tool_calls" : "stop"
-  ));
-  response.end("data: [DONE]\n\n");
 }

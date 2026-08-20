@@ -4,16 +4,18 @@ import {
   listApiKeysForOwner,
   updateApiKeyRecord
 } from "../services/api-key-service.js";
-import { resolveScopedAccount, saveDeepseekAccountForOwner } from "../services/auth-service.js";
+import {
+  getSessionIncognitoState,
+  getVisibleAccounts,
+  resolveScopedAccount
+} from "../services/auth-service.js";
 import {
   deleteAccountById,
   isUsableAccount,
   listUsableAccountsForOwner,
   resolveAccountLabel
 } from "../services/account-service.js";
-import { loginToDeepseek } from "../services/deepseek-auth.js";
-import { resolveDeepseekClientProfile } from "../services/deepseek-device.js";
-import { reportClientSettingsForAccount } from "../services/deepseek-settings.js";
+import { importDeepseekAccountForOwner } from "../services/account-import-service.js";
 import {
   attemptCaptchaAutoSolveForAccount,
   clearCaptchaState,
@@ -30,7 +32,10 @@ import {
   isSharedAccountModeEnabled
 } from "../services/shared-account-mode-service.js";
 import { toPublicAccount } from "../services/app-payload-service.js";
-import { getVisibleAccounts, getSessionIncognitoState } from "../services/auth-service.js";
+import {
+  getToolParsingModeState,
+  setOwnerToolParsingModeEnabled
+} from "../services/tool-parsing-mode-service.js";
 import { parseJsonBody, readRequestBody, sendError, sendJson } from "../utils/http.js";
 
 async function readJsonRequest(request) {
@@ -52,26 +57,16 @@ function toIncognitoPayload(session) {
 
 async function handleAccountCreation(request, response, session) {
   const body = await readJsonRequest(request);
-  const deviceProfile = resolveDeepseekClientProfile(body.deviceProfile ?? { deviceId: body.deviceId });
 
   try {
-    const loginResult = await loginToDeepseek({
-      loginValue: body.username,
-      password: body.password,
-      deviceProfile
-    });
-    const account = saveDeepseekAccountForOwner({
+    const account = await importDeepseekAccountForOwner({
       ownerId: session.ownerId,
       loginValue: body.username,
-      password: body.password,
-      deviceProfile,
-      loginResult
+      password: body.password
     });
-
-    const reportResult = await reportClientSettingsForAccount(account);
-    sendJson(response, 200, { account: toPublicAccount(reportResult.account ?? account) });
+    sendJson(response, 200, { account: toPublicAccount(account) });
   } catch (error) {
-    sendError(response, 401, error.message);
+    sendError(response, error.statusCode ?? 401, error.message);
   }
 
   return true;
@@ -98,6 +93,16 @@ async function handleChainOfThoughtOverrideUpdate(request, response, session) {
 
   sendJson(response, 200, {
     chainOfThoughtOverride: getChainOfThoughtOverrideState(session.ownerId)
+  });
+  return true;
+}
+
+async function handleToolParsingModeUpdate(request, response, session) {
+  const body = await readJsonRequest(request);
+  setOwnerToolParsingModeEnabled(session.ownerId, body.enabled);
+
+  sendJson(response, 200, {
+    toolParsingMode: getToolParsingModeState(session.ownerId)
   });
   return true;
 }
@@ -200,6 +205,10 @@ export async function handlePrivateApiRequest({ request, response, session, url 
 
   if (request.method === "POST" && url.pathname === "/api/chain-of-thought-override") {
     return handleChainOfThoughtOverrideUpdate(request, response, session);
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/tool-parsing-mode") {
+    return handleToolParsingModeUpdate(request, response, session);
   }
 
   if (request.method === "GET" && url.pathname === "/api/api-keys") {

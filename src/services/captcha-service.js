@@ -1,5 +1,3 @@
-import { randomUUID } from "node:crypto";
-
 import { config } from "../config.js";
 import { getAccountById, listUsableAccounts, updateAccountById } from "./account-service.js";
 import {
@@ -459,7 +457,7 @@ async function submitShumeiCoordinates(challenge, coordinates, account = null) {
 
   const profile = resolveDeepseekClientProfile(account ?? {});
   const origin = new URL(config.deepseekBaseUrl).origin;
-  const channel = profile.source || "chat-web";
+  const channel = "chat-web";
   const appId = profile.bundleId || "com.deepseek.chat";
   const sdkver = profile.clientVersion || "web";
   const rversion = config.deepseekApiVersion;
@@ -485,11 +483,14 @@ async function submitShumeiCoordinates(challenge, coordinates, account = null) {
 
   const headers = {
     ...createDeepseekClientHeaders(profile),
+    accept: "application/json, text/plain, */*",
     "content-type": "application/x-www-form-urlencoded;charset=UTF-8",
-    "x-request-id": `DS-${randomUUID()}`,
-    "x-trace-id": randomUUID(),
+    priority: "u=1, i",
     referer: `${origin}/`,
-    origin
+    origin,
+    "sec-fetch-dest": "empty",
+    "sec-fetch-mode": "cors",
+    "sec-fetch-site": "cross-site"
   };
 
   const result = await fetchJson(`${config.shumei.captchaBaseUrl}/ca/v1/fverify`, {

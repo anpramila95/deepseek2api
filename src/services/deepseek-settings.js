@@ -5,6 +5,13 @@ import { createDeepseekClientHeaders, resolveDeepseekClientProfile } from "./dee
 import { createProtocolRequestContext } from "./deepseek-protocol.js";
 
 const SETTINGS_SCOPES = Object.freeze(["main", "model", "web_upgrade", "banner"]);
+const UPDATE_SETTINGS_PATH = "/users/update_settings";
+
+function createStatusError(statusCode, message) {
+  const error = new Error(redactSensitiveText(message));
+  error.statusCode = statusCode;
+  return error;
+}
 
 function createSettingsHeaders(account, extraHeaders = {}) {
   return createDeepseekClientHeaders(account, {
@@ -28,7 +35,7 @@ function createReportDid(account) {
 
 async function fetchScopeSettings(account, scope) {
   const profile = resolveDeepseekClientProfile(account);
-  const requestContext = createProtocolRequestContext(profile, "/client/settings");
+  const requestContext = createProtocolRequestContext(profile, "/client/settings", { method: "GET" });
   const url = new URL(resolveDeepseekApiPath("/client/settings"), config.deepseekBaseUrl);
   url.searchParams.set("did", profile.clientDid);
   url.searchParams.set("scope", scope);
@@ -61,7 +68,9 @@ async function fetchScopeSettings(account, scope) {
 }
 
 async function reportSettings(account, settingsIds) {
-  const requestContext = createProtocolRequestContext(account, "/client/settings/report");
+  const requestContext = createProtocolRequestContext(account, "/client/settings/report", {
+    method: "POST"
+  });
   const response = await fetch(`${config.deepseekBaseUrl}${resolveDeepseekApiPath("/client/settings/report")}`, {
     method: "POST",
     headers: createSettingsHeaders(account, {
@@ -119,4 +128,62 @@ export async function reportClientSettingsForAccount(account) {
     });
     return { ok: false, settingsIds: [], error: redactSensitiveText(error.message) };
   }
+}
+
+export async function disableDataOptimizationForAccount(account) {
+  if (!account?.token) {
+    throw createStatusError(502, "Missing token while disabling DeepSeek data optimization");
+  }
+
+  const requestContext = createProtocolRequestContext(account, UPDATE_SETTINGS_PATH, {
+    method: "POST"
+  });
+  let response;
+  try {
+    response = await fetch(`${config.deepseekBaseUrl}${resolveDeepseekApiPath(UPDATE_SETTINGS_PATH)}`, {
+      method: "POST",
+      headers: createSettingsHeaders(account, {
+        ...requestContext.headers,
+        "content-type": "application/json"
+      }),
+      body: JSON.stringify({ training_allowed: false })
+    });
+  } catch (error) {
+    throw createStatusError(502, `Failed to disable DeepSeek data optimization: ${error.message}`);
+  }
+
+  const responseText = await response.text().catch(() => "");
+  let payload = {};
+  if (responseText) {
+    try {
+      payload = JSON.parse(responseText);
+    } catch {
+      throw createStatusError(
+        502,
+        "DeepSeek data optimization update returned an invalid response"
+      );
+    }
+  }
+
+  const globalCode = payload?.code;
+  const bizCode = payload?.data?.biz_code;
+  const hasSuccessCode = globalCode === 0 || bizCode === 0;
+  if (
+    !response.ok
+    || !hasSuccessCode
+    || (typeof globalCode === "number" && globalCode !== 0)
+    || (typeof bizCode === "number" && bizCode !== 0)
+  ) {
+    throw createStatusError(
+      502,
+      payload?.data?.biz_msg
+        || payload?.msg
+        || `DeepSeek data optimization update failed (HTTP ${response.status})`
+    );
+  }
+
+  return {
+    confirmedAt: new Date().toISOString(),
+    trainingAllowed: false
+  };
 }

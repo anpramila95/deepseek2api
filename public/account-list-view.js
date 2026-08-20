@@ -34,9 +34,9 @@ function resolveHealth(account) {
   }
 
   if (!account.status || account.status === "online") {
-    return account.settingsReported
+    return account.settingsReported && account.dataOptimizationDisabled
       ? { className: "ok", label: "健康" }
-      : { className: "warn", label: "待上报设置" };
+      : { className: "warn", label: "设置待确认" };
   }
 
   if (account.status === "rate_limited") {
@@ -99,7 +99,7 @@ function renderAccountItem(account, options) {
           <strong>${escapeHtml(resolveAccountLabel(account))}</strong>
         </div>
         <span class="account-meta">${escapeHtml(meta)}</span>
-        <span class="account-meta">状态：${escapeHtml(health.label)} · Settings：${account.settingsReported ? "已上报" : "未上报"} · 更新：${escapeHtml(formatDateTime(account.updatedAt))}</span>
+        <span class="account-meta">状态：${escapeHtml(health.label)} · 数据优化：${account.dataOptimizationDisabled ? "已关闭" : "未确认"} · Settings：${account.settingsReported ? "已上报" : "未上报"} · 更新：${escapeHtml(formatDateTime(account.updatedAt))}</span>
       </div>
       <div class="inline-actions account-actions">
         <span class="chip">${escapeHtml(renderStatusText(account.id, selectedAccountId))}</span>

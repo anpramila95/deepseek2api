@@ -130,6 +130,7 @@ export async function consumeAssistantResponse(options) {
 
   const decoder = new TextDecoder();
   const deltaDecoder = createDeepseekDeltaDecoder();
+  let protocolError = null;
   let result = {
     response_message_id: null,
     message: {
@@ -153,24 +154,40 @@ export async function consumeAssistantResponse(options) {
       return;
     }
 
+    if (event === "hint" || event === "toast") {
+      try {
+        const payload = JSON.parse(data);
+        if (String(payload?.type || "").toLowerCase() === "error") {
+          protocolError = payload.content || payload.finish_reason || "DeepSeek completion failed";
+        }
+      } catch {
+        // Ignore non-JSON informational frames.
+      }
+      return;
+    }
+
     if (event !== "message") {
       return;
     }
 
-    const delta = deltaDecoder.consume(data);
-    if (delta) {
+    deltaDecoder.consumeAll(data).forEach((delta) => {
       result = {
         ...result,
         message: appendDelta(result.message, delta)
       };
-      onDelta(delta);
-    }
+      onDelta?.(delta);
+    });
   });
 
   for await (const chunk of response.body) {
     parser.push(decoder.decode(chunk, { stream: true }));
   }
+  parser.push(decoder.decode());
   parser.flush();
+
+  if (protocolError) {
+    throw new Error(protocolError);
+  }
 
   return result;
 }

@@ -1,9 +1,13 @@
 import { getApiKeyRecord, recordApiKeyUsage } from "../services/api-key-service.js";
-import { takeRoundRobinAccount } from "../services/account-rotation-service.js";
+import {
+  takeNextRoundRobinAccount,
+  takeRoundRobinAccount
+} from "../services/account-rotation-service.js";
 import { isIncognitoEnabledForOwner } from "../services/incognito-service.js";
 import { collectOpenAiResponse, streamOpenAiResponse } from "../services/openai-bridge.js";
 import { listOpenAiModels } from "../services/openai-request.js";
 import { recordRequestLog } from "../services/request-log-service.js";
+import { isToolParsingModeEnabledForOwner } from "../services/tool-parsing-mode-service.js";
 import { withOwnerRequestLimit } from "../services/request-limit-service.js";
 import { parseJsonBody, readRequestBody, sendError, sendJson } from "../utils/http.js";
 
@@ -26,6 +30,13 @@ function resolveLimitStatus(error) {
 }
 
 function handleOpenAiError(response, error) {
+  if (response.headersSent || response.writableEnded || response.destroyed) {
+    if (response.headersSent && !response.writableEnded && !response.destroyed) {
+      response.end();
+    }
+    return true;
+  }
+
   if (error.code === "USER_DISABLED" || error.code === "REQUEST_LIMIT") {
     sendError(response, resolveLimitStatus(error), error.message);
     return true;
@@ -57,7 +68,7 @@ async function handleChatCompletionsRequest(request, response, apiKeyRecord) {
   await withOwnerRequestLimit(apiKeyRecord.ownerId, async () => {
     const startedAt = Date.now();
     const body = parseJsonBody(await readRequestBody(request)) ?? {};
-    const account = takeRoundRobinAccount(apiKeyRecord);
+    let account = takeRoundRobinAccount(apiKeyRecord);
     if (!account) {
       recordRequestLog({
         method: "POST",
@@ -73,6 +84,11 @@ async function handleChatCompletionsRequest(request, response, apiKeyRecord) {
     }
 
     const deleteAfterFinish = isIncognitoEnabledForOwner(apiKeyRecord.ownerId);
+    const toolParsingModeEnabled = isToolParsingModeEnabledForOwner(apiKeyRecord.ownerId);
+    const selectNextAccount = (currentAccount) => {
+      account = takeNextRoundRobinAccount(apiKeyRecord, currentAccount?.id) ?? currentAccount;
+      return account;
+    };
     try {
       if (body.stream) {
         await streamOpenAiResponse({
@@ -81,7 +97,9 @@ async function handleChatCompletionsRequest(request, response, apiKeyRecord) {
           body,
           deleteAfterFinish,
           ownerId: apiKeyRecord.ownerId,
-          toolCallsEnabled: apiKeyRecord.toolCallsEnabled
+          selectNextAccount,
+          toolCallsEnabled: apiKeyRecord.toolCallsEnabled,
+          toolParsingModeEnabled
         });
         recordRequestLog({
           method: "POST",
@@ -100,7 +118,9 @@ async function handleChatCompletionsRequest(request, response, apiKeyRecord) {
         body,
         deleteAfterFinish,
         ownerId: apiKeyRecord.ownerId,
-        toolCallsEnabled: apiKeyRecord.toolCallsEnabled
+        selectNextAccount,
+        toolCallsEnabled: apiKeyRecord.toolCallsEnabled,
+        toolParsingModeEnabled
       });
       sendJson(response, 200, payload);
       recordRequestLog({

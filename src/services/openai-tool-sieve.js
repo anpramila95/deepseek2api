@@ -1,13 +1,65 @@
 import { parseToolCallsFromText } from "./openai-tool-parser.js";
 
-const TOOL_CAPTURE_PAIRS = Object.freeze([
-  { open: "<tool_calls", close: "</tool_calls>" },
-  { open: "<function_calls", close: "</function_calls>" },
-  { open: "<tool_call", close: "</tool_call>" },
-  { open: "<function_call", close: "</function_call>" },
-  { open: "<invoke", close: "</invoke>" },
-  { open: "<tool_use", close: "</tool_use>" }
-]);
+const TOOL_CAPTURE_TAG = "tool";
+
+function findToolOpen(text, offset = 0) {
+  const marker = `<${TOOL_CAPTURE_TAG}`;
+  let index = text.indexOf(marker, offset);
+
+  while (index >= 0) {
+    const boundary = text[index + marker.length];
+    if (boundary === undefined || /[\s/>]/.test(boundary)) {
+      return index;
+    }
+
+    index = text.indexOf(marker, index + marker.length);
+  }
+
+  return -1;
+}
+
+function isInsideJsonString(text) {
+  let escaped = false;
+  let insideString = false;
+
+  for (const character of text) {
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+
+    if (character === "\\" && insideString) {
+      escaped = true;
+      continue;
+    }
+
+    if (character === "\"") {
+      insideString = !insideString;
+    }
+  }
+
+  return insideString;
+}
+
+function findToolClose(captured, lower, openIndex) {
+  const close = `</${TOOL_CAPTURE_TAG}>`;
+  let closeIndex = lower.indexOf(close, openIndex);
+
+  const bodyStart = lower.indexOf(">", openIndex);
+  if (bodyStart < 0) {
+    return { close, closeIndex: -1 };
+  }
+
+  while (closeIndex >= 0) {
+    if (!isInsideJsonString(captured.slice(bodyStart + 1, closeIndex))) {
+      return { close, closeIndex };
+    }
+
+    closeIndex = lower.indexOf(close, closeIndex + close.length);
+  }
+
+  return { close, closeIndex: -1 };
+}
 
 function isInsideCodeFence(state, prefix) {
   const combined = `${state.emittedText}${prefix}`;
@@ -21,7 +73,7 @@ function findPartialToolTagStart(text) {
   }
 
   const tail = text.slice(lastIndex).toLowerCase();
-  return TOOL_CAPTURE_PAIRS.some(({ open }) => open.startsWith(tail)) ? lastIndex : -1;
+  return `<${TOOL_CAPTURE_TAG}`.startsWith(tail) ? lastIndex : -1;
 }
 
 function findToolSegmentStart(state, text) {
@@ -29,16 +81,7 @@ function findToolSegmentStart(state, text) {
   let offset = 0;
 
   while (offset < lower.length) {
-    let bestIndex = -1;
-    let matchedOpen = "";
-
-    for (const { open } of TOOL_CAPTURE_PAIRS) {
-      const index = lower.indexOf(open, offset);
-      if (index >= 0 && (bestIndex === -1 || index < bestIndex)) {
-        bestIndex = index;
-        matchedOpen = open;
-      }
-    }
+    const bestIndex = findToolOpen(lower, offset);
 
     if (bestIndex === -1) {
       return -1;
@@ -48,7 +91,7 @@ function findToolSegmentStart(state, text) {
       return bestIndex;
     }
 
-    offset = bestIndex + matchedOpen.length;
+    offset = bestIndex + TOOL_CAPTURE_TAG.length + 1;
   }
 
   return -1;
@@ -65,28 +108,23 @@ function splitSafeContent(state, text) {
 
 function consumeCapturedToolBlock(captured, allowedToolNames) {
   const lower = captured.toLowerCase();
-
-  for (const pair of TOOL_CAPTURE_PAIRS) {
-    const openIndex = lower.indexOf(pair.open);
-    if (openIndex < 0) {
-      continue;
-    }
-
-    const closeIndex = lower.lastIndexOf(pair.close);
-    if (closeIndex < openIndex) {
-      return { ready: false };
-    }
-
-    const closeEnd = closeIndex + pair.close.length;
-    return {
-      ready: true,
-      prefix: captured.slice(0, openIndex),
-      calls: parseToolCallsFromText(captured.slice(openIndex, closeEnd), allowedToolNames),
-      suffix: captured.slice(closeEnd)
-    };
+  const openIndex = findToolOpen(lower);
+  if (openIndex < 0) {
+    return { ready: true, prefix: captured, calls: [], suffix: "" };
   }
 
-  return { ready: true, prefix: captured, calls: [], suffix: "" };
+  const { close, closeIndex } = findToolClose(captured, lower, openIndex);
+  if (closeIndex < openIndex) {
+    return { ready: false };
+  }
+
+  const closeEnd = closeIndex + close.length;
+  return {
+    ready: true,
+    prefix: captured.slice(0, openIndex),
+    calls: parseToolCallsFromText(captured.slice(openIndex, closeEnd), allowedToolNames),
+    suffix: captured.slice(closeEnd)
+  };
 }
 
 function pushTextEvent(state, events, text) {
@@ -94,8 +132,29 @@ function pushTextEvent(state, events, text) {
     return;
   }
 
-  state.emittedText += text;
-  events.push({ type: "text", text });
+  const combined = `${state.heldWhitespace}${text}`;
+  const trailingWhitespace = combined.match(/\s+$/)?.[0] ?? "";
+  const safeText = trailingWhitespace
+    ? combined.slice(0, -trailingWhitespace.length)
+    : combined;
+
+  state.heldWhitespace = trailingWhitespace;
+  if (!safeText) {
+    return;
+  }
+
+  state.emittedText += safeText;
+  events.push({ type: "text", text: safeText });
+}
+
+function pushToolCallsEvent(state, events, calls) {
+  if (!calls?.length) {
+    return;
+  }
+
+  state.heldWhitespace = "";
+  state.sawToolCall = true;
+  events.push({ type: "tool_calls", calls });
 }
 
 export function createToolSieve(allowedToolNames = []) {
@@ -104,7 +163,9 @@ export function createToolSieve(allowedToolNames = []) {
     capture: "",
     capturing: false,
     emittedText: "",
-    pending: ""
+    heldWhitespace: "",
+    pending: "",
+    sawToolCall: false
   };
 
   function drain() {
@@ -125,9 +186,7 @@ export function createToolSieve(allowedToolNames = []) {
         state.capture = "";
         state.capturing = false;
         pushTextEvent(state, events, consumed.prefix ?? "");
-        if (consumed.calls?.length) {
-          events.push({ type: "tool_calls", calls: consumed.calls });
-        }
+        pushToolCallsEvent(state, events, consumed.calls);
         state.pending = `${consumed.suffix ?? ""}${state.pending}`;
         continue;
       }
@@ -162,9 +221,7 @@ export function createToolSieve(allowedToolNames = []) {
         const consumed = consumeCapturedToolBlock(state.capture, state.allowedToolNames);
         if (consumed.ready) {
           pushTextEvent(state, events, consumed.prefix ?? "");
-          if (consumed.calls?.length) {
-            events.push({ type: "tool_calls", calls: consumed.calls });
-          }
+          pushToolCallsEvent(state, events, consumed.calls);
           pushTextEvent(state, events, consumed.suffix ?? "");
         } else {
           pushTextEvent(state, events, state.capture);
@@ -172,8 +229,13 @@ export function createToolSieve(allowedToolNames = []) {
       }
 
       pushTextEvent(state, events, state.pending);
+      if (state.heldWhitespace && (!state.sawToolCall || state.emittedText.trim())) {
+        state.emittedText += state.heldWhitespace;
+        events.push({ type: "text", text: state.heldWhitespace });
+      }
       state.capture = "";
       state.capturing = false;
+      state.heldWhitespace = "";
       state.pending = "";
       return events;
     },

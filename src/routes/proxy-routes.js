@@ -4,7 +4,8 @@ import { deleteChatSession } from "../services/chat-session-service.js";
 import {
   collectDeepseekChatResponse,
   createChatCompletionRequestBody,
-  sanitizeChatCompletionBody
+  sanitizeChatCompletionBody,
+  streamDeepseekChatResponse
 } from "../services/deepseek-chat-response.js";
 import { isChainOfThoughtOverrideEnabledForOwner } from "../services/chain-of-thought-override-service.js";
 import { isIncognitoEnabledForOwner } from "../services/incognito-service.js";
@@ -95,7 +96,7 @@ export function resolveChatCompletionRequest({ body, method, ownerId, targetPath
   };
 }
 
-function resolveCleanupTask({ account, body, method, ownerId, targetPath }) {
+function resolveCleanupSessionId({ body, method, ownerId, targetPath }) {
   if (method !== "POST" || targetPath !== CHAT_COMPLETION_PATH) {
     return null;
   }
@@ -109,21 +110,49 @@ function resolveCleanupTask({ account, body, method, ownerId, targetPath }) {
     return null;
   }
 
-  return () => deleteChatSession(account, chatSessionId);
+  return chatSessionId;
 }
 
-async function writeUpstreamResponse({ onAfterStream, response, upstream }) {
-  response.writeHead(upstream.status, getResponseHeaders(upstream));
-  response.flushHeaders?.();
-
-  if (upstream.body) {
-    for await (const chunk of upstream.body) {
-      response.write(chunk);
-    }
+export async function cleanupCompletedChatSession({
+  account,
+  chatSessionId,
+  completion,
+  deleteSession = deleteChatSession
+}) {
+  if (!chatSessionId || completion?.completed !== true) {
+    return false;
   }
 
-  await onAfterStream?.();
-  response.end();
+  await deleteSession(completion.refreshedAccount ?? account, chatSessionId);
+  return true;
+}
+
+async function writeUpstreamResponse({ response, upstream }) {
+  response.writeHead(upstream.status, getResponseHeaders(upstream));
+  response.flushHeaders?.();
+  const isEventStream = (upstream.headers.get("content-type") ?? "").includes("text/event-stream");
+  const heartbeat = isEventStream
+    ? setInterval(() => {
+        if (!response.destroyed && !response.writableEnded) {
+          response.write(": keep-alive\n\n");
+        }
+      }, 10_000)
+    : null;
+  heartbeat?.unref?.();
+
+  try {
+    if (upstream.body) {
+      for await (const chunk of upstream.body) {
+        response.write(chunk);
+      }
+    }
+
+    response.end();
+  } finally {
+    if (heartbeat) {
+      clearInterval(heartbeat);
+    }
+  }
 }
 
 export async function handleProxyRequest(request, response, url, allowedProxyPaths) {
@@ -166,8 +195,7 @@ export async function handleProxyRequest(request, response, url, allowedProxyPat
         targetPath
       });
       const forwardedBody = chatCompletion?.forwardedBody ?? rawBody;
-      const cleanup = resolveCleanupTask({
-        account,
+      const cleanupSessionId = resolveCleanupSessionId({
         body: rawBody,
         method: request.method,
         ownerId: session.ownerId,
@@ -176,12 +204,16 @@ export async function handleProxyRequest(request, response, url, allowedProxyPat
 
       if (chatCompletion && !chatCompletion.shouldStream) {
         try {
-          const payload = await collectDeepseekChatResponse({
+          const completion = await collectDeepseekChatResponse({
             account,
             body: sanitizeChatCompletionBody(chatCompletion.payload)
           });
-          await cleanup?.();
-          sendJson(response, 200, payload);
+          await cleanupCompletedChatSession({
+            account,
+            chatSessionId: cleanupSessionId,
+            completion
+          });
+          sendJson(response, 200, completion.payload);
           recordRequestLog({
             method: request.method,
             path: targetPath,
@@ -193,9 +225,40 @@ export async function handleProxyRequest(request, response, url, allowedProxyPat
           });
           return;
         } catch (error) {
-          await cleanup?.();
+          // Keep an incognito session when collection failed or remained
+          // incomplete.  The protocol consumer owns continuation/resume and
+          // only returns after a complete message is confirmed.
           throw error;
         }
+      }
+
+      if (chatCompletion?.shouldStream) {
+        const streamResult = await streamDeepseekChatResponse({
+          account,
+          body: sanitizeChatCompletionBody(chatCompletion.payload),
+          response
+        });
+
+        await cleanupCompletedChatSession({
+          account,
+          chatSessionId: cleanupSessionId,
+          completion: streamResult
+        });
+
+        if (!response.headersSent) {
+          sendJson(response, 200, streamResult.payload);
+        }
+
+        recordRequestLog({
+          method: request.method,
+          path: targetPath,
+          model: chatCompletion.payload?.model_type ?? "",
+          ownerId: session.ownerId,
+          accountId: account.id,
+          status: 200,
+          durationMs: Date.now() - startedAt
+        });
+        return;
       }
 
       const { response: upstream } = await proxyDeepseekRequest({
@@ -208,7 +271,6 @@ export async function handleProxyRequest(request, response, url, allowedProxyPat
       });
 
       await writeUpstreamResponse({
-        onAfterStream: cleanup,
         response,
         upstream
       });
@@ -233,7 +295,13 @@ export async function handleProxyRequest(request, response, url, allowedProxyPat
     });
 
     if (error.statusCode) {
-      sendError(response, error.statusCode, error.message);
+      if (!response.headersSent) {
+        sendError(response, error.statusCode, error.message);
+      }
+      return true;
+    }
+
+    if (error.responseStarted || response.headersSent) {
       return true;
     }
 

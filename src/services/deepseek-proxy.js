@@ -11,6 +11,10 @@ import {
   attachShumeiVerificationToBody,
   inspectResponseForCaptcha
 } from "./captcha-service.js";
+import {
+  isInvalidPowResponseText,
+  isPowChallengeFresh
+} from "./pow-utils.js";
 
 const powChallengeCache = new Map();
 
@@ -31,12 +35,13 @@ function getPowCacheKey(account, path) {
 }
 
 function isFreshChallenge(challenge) {
-  const expireAt = Number(challenge?.expire_at ?? challenge?.expireAt ?? 0);
-  return expireAt > Math.floor(Date.now() / 1000) + 30;
+  return isPowChallengeFresh(challenge);
 }
 
 async function fetchPowChallenge(account, path) {
-  const requestContext = createProtocolRequestContext(account, "/chat/create_pow_challenge");
+  const requestContext = createProtocolRequestContext(account, "/chat/create_pow_challenge", {
+    method: "POST"
+  });
   const response = await fetch(`${config.deepseekBaseUrl}${resolveDeepseekApiPath("/chat/create_pow_challenge")}`, {
     method: "POST",
     headers: createBaseHeaders(account.token, {
@@ -65,8 +70,12 @@ async function fetchPowChallenge(account, path) {
   return challenge;
 }
 
-async function getPowChallenge(account, path) {
+async function getPowChallenge(account, path, { forceFresh = false } = {}) {
   const cacheKey = getPowCacheKey(account, path);
+  if (forceFresh) {
+    powChallengeCache.delete(cacheKey);
+  }
+
   const cached = powChallengeCache.get(cacheKey);
   if (isFreshChallenge(cached)) {
     powChallengeCache.delete(cacheKey);
@@ -98,11 +107,17 @@ function prefetchPowChallenge(account, path) {
     });
 }
 
-async function createPowHeader(account, path) {
-  const challenge = await getPowChallenge(account, path);
+function invalidatePowChallenge(account, path) {
+  powChallengeCache.delete(getPowCacheKey(account, path));
+}
+
+async function createPowHeader(account, path, { forceFresh = false } = {}) {
+  const challenge = await getPowChallenge(account, path, { forceFresh });
+  const expireAt = challenge?.expire_at ?? challenge?.expireAt;
   const solved = await solvePowChallenge({
     ...challenge,
-    expireAt: challenge.expire_at
+    expire_at: expireAt,
+    expireAt
   });
 
   prefetchPowChallenge(account, path);
@@ -119,19 +134,42 @@ async function createPowHeader(account, path) {
   ).toString("base64");
 }
 
-async function performRequest({ account, method, path, query, body, headers }) {
+async function responseContainsInvalidPow(response) {
+  const contentType = response?.headers?.get?.("content-type") ?? "";
+  if (!response || contentType.includes("text/event-stream") || typeof response.clone !== "function") {
+    return false;
+  }
+
+  try {
+    return isInvalidPowResponseText(await response.clone().text());
+  } catch {
+    return false;
+  }
+}
+
+async function performRequest({
+  account,
+  method,
+  path,
+  query,
+  body,
+  headers,
+  forceFreshPow = false
+}) {
   const targetPath = resolveDeepseekApiPath(path);
-  const requestContext = createProtocolRequestContext(account, targetPath);
+  const requestContext = createProtocolRequestContext(account, targetPath, { method });
   const finalHeaders = createBaseHeaders(account.token, {
     ...requestContext.headers,
     ...headers
   }, requestContext.profile);
 
   if (config.powProtectedPaths.has(targetPath)) {
-    finalHeaders["X-DS-PoW-Response"] = await createPowHeader(account, targetPath);
+    finalHeaders["X-DS-PoW-Response"] = await createPowHeader(account, targetPath, {
+      forceFresh: forceFreshPow
+    });
   }
 
-  return fetch(buildTargetUrl(targetPath, query), {
+  const response = await fetch(buildTargetUrl(targetPath, query), {
     method,
     headers: finalHeaders,
     body: attachShumeiVerificationToBody({
@@ -140,6 +178,25 @@ async function performRequest({ account, method, path, query, body, headers }) {
       headers: finalHeaders
     })
   });
+
+  if (
+    !forceFreshPow
+    && config.powProtectedPaths.has(targetPath)
+    && await responseContainsInvalidPow(response)
+  ) {
+    invalidatePowChallenge(account, targetPath);
+    return performRequest({
+      account,
+      method,
+      path,
+      query,
+      body,
+      headers,
+      forceFreshPow: true
+    });
+  }
+
+  return response;
 }
 
 async function maybeRefreshAccount(response, account) {

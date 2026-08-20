@@ -38,7 +38,7 @@ function buildLoginPayload(loginValue, password, profile) {
 
 export async function loginToDeepseek({ loginValue, password, deviceId, deviceProfile }) {
   const profile = resolveDeepseekClientProfile(deviceProfile ?? { deviceId });
-  const requestContext = createProtocolRequestContext(profile, "/users/login");
+  const requestContext = createProtocolRequestContext(profile, "/users/login", { method: "POST" });
   const response = await fetch(`${config.deepseekBaseUrl}${resolveDeepseekApiPath("/users/login")}`, {
     method: "POST",
     headers: createBaseHeaders("", {

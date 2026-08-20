@@ -104,13 +104,32 @@ export function getSystemSettings(options = {}) {
     stored.prompt?.expertPromptSuffixEnabled,
     stored.prompt?.expertModePromptSuffixEnabled
   );
+  const storedToolParsingModeEnabled = firstDefined(
+    stored.toolParsingModeEnabled,
+    stored.toolParserEnabled,
+    stored.prompt?.toolParsingModeEnabled,
+    stored.prompt?.toolParserEnabled
+  );
+  const storedInputContentLimit = firstDefined(
+    stored.inputContentLimit,
+    stored.promptChunkLimit,
+    stored.prompt?.inputContentLimit,
+    stored.prompt?.chunkLimit
+  );
 
   return {
     captcha: resolveCaptchaSettings(stored.captcha, options),
+    inputContentLimit: normalizePositiveInteger(
+      storedInputContentLimit,
+      config.deepseekCompletion.inputContentLimit,
+      1,
+      10_000_000
+    ),
     chainOfThoughtOverrideEnabled: normalizeBoolean(
       storedOverrideEnabled,
       config.chainOfThoughtOverrideEnabled
-    )
+    ),
+    toolParsingModeEnabled: normalizeBoolean(storedToolParsingModeEnabled, false)
   };
 }
 
@@ -135,6 +154,31 @@ export function updateSystemSettings(patch = {}) {
   const nextOverridePatch = nextOverrideEnabled === undefined
     ? {}
     : { chainOfThoughtOverrideEnabled: normalizeBoolean(nextOverrideEnabled, false) };
+  const nextToolParsingModeEnabled = firstDefined(
+    patch.toolParsingModeEnabled,
+    patch.toolParserEnabled,
+    patch.prompt?.toolParsingModeEnabled,
+    patch.prompt?.toolParserEnabled
+  );
+  const nextToolParsingModePatch = nextToolParsingModeEnabled === undefined
+    ? {}
+    : { toolParsingModeEnabled: normalizeBoolean(nextToolParsingModeEnabled, false) };
+  const nextInputContentLimit = firstDefined(
+    patch.inputContentLimit,
+    patch.promptChunkLimit,
+    patch.prompt?.inputContentLimit,
+    patch.prompt?.chunkLimit
+  );
+  const nextInputContentLimitPatch = nextInputContentLimit === undefined
+    ? {}
+    : {
+        inputContentLimit: normalizePositiveInteger(
+          nextInputContentLimit,
+          config.deepseekCompletion.inputContentLimit,
+          1,
+          10_000_000
+        )
+      };
 
   updateStore((state) => ({
     ...state,
@@ -144,7 +188,9 @@ export function updateSystemSettings(patch = {}) {
         ...(state.systemSettings?.captcha ?? {}),
         ...nextCaptchaPatch
       },
-      ...nextOverridePatch
+      ...nextOverridePatch,
+      ...nextToolParsingModePatch,
+      ...nextInputContentLimitPatch
     }
   }));
 

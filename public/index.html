@@ -271,6 +271,15 @@
                     </form>
                     <pre id="cot-override-status" class="status hidden"></pre>
                   </article>
+                  <article id="tool-parsing-card" class="bento-panel panel-paper settings-card">
+                    <div class="section-heading"><div><span class="panel-label">Tool Parser</span><h3>工具解析模式</h3></div></div>
+                    <p id="tool-parsing-description" class="muted section-copy"></p>
+                    <form id="tool-parsing-form" class="settings-form">
+                      <label class="toggle-chip settings-toggle"><input id="tool-parsing-toggle" type="checkbox"><span id="tool-parsing-label">仅自己开启</span></label>
+                      <button type="submit" class="button-primary" data-ripple>保存</button>
+                    </form>
+                    <pre id="tool-parsing-status" class="status hidden"></pre>
+                  </article>
                 </div>
               </section>
 
@@ -323,6 +332,8 @@
                       <label class="toggle-chip settings-toggle"><input id="settings-auto-solve" type="checkbox"><span>自动处理验证码</span></label>
                       <label class="toggle-chip settings-toggle"><input id="settings-vision-fallback" type="checkbox"><span>DeepSeek Vision 降级</span></label>
                       <label class="toggle-chip settings-toggle"><input id="settings-cot-override" type="checkbox"><span>思维链覆写模式（实验性，全局）</span></label>
+                      <label class="toggle-chip settings-toggle"><input id="settings-tool-parsing-mode" type="checkbox"><span>工具解析模式（全局）</span></label>
+                      <label class="input-group"><span>输入分段字符数</span><input id="settings-input-content-limit" type="number" min="1" max="10000000" step="1000"></label>
                       <label class="input-group"><span>Vision 备用账号</span><select id="settings-vision-account"></select></label>
                       <div class="form-grid two-cols"><label class="input-group"><span>最大重试</span><input id="settings-max-retries" type="number" min="1" max="20"></label><label class="input-group"><span>冷却毫秒</span><input id="settings-cooldown-ms" type="number" min="0" step="1000"></label></div>
                       <div class="form-actions"><button type="submit" class="button-primary" data-ripple>保存设置</button></div>

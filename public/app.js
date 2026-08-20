@@ -87,12 +87,14 @@ const services = createAppServices({
   bootstrap,
   clearComposerInput: () => draftFiles.clearComposerInput(),
   els,
+  getApiKeys: () => state.apiKeys,
   getSelectedAccountId: () => state.selectedAccountId,
   loadSessions: () => workspace.loadSessions(),
   setAppState: updateState,
   setStatus,
   view: {
     renderDashboard: () => view.renderDashboard(),
+    renderApiKeys: () => view.renderApiKeys(),
     renderMetrics: () => view.renderMetrics(),
     renderRequestLogs: () => view.renderRequestLogs(),
     renderShell: () => view.renderShell()
@@ -382,6 +384,7 @@ bindActions({
   onToggleChainOfThoughtOverride: services.toggleChainOfThoughtOverride,
   onToggleIncognito: services.toggleIncognito,
   onToggleSharedAccountMode: services.toggleSharedAccountMode,
+  onToggleToolParsingMode: services.toggleToolParsingMode,
   onUpdateSystemSettings: services.updateSystemSettings,
   onToggleInviteRequirement: services.updateRegistration,
   onUpdateUser: services.updateUser,

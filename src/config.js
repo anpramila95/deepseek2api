@@ -52,6 +52,15 @@ function parseNonNegativeNumber(value, fallback, max = Number.MAX_SAFE_INTEGER) 
   return Math.max(0, Math.min(max, parsed));
 }
 
+function parsePositiveInteger(value, fallback, max = Number.MAX_SAFE_INTEGER) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return fallback;
+  }
+
+  return Math.min(max, Math.trunc(parsed));
+}
+
 const powProtectedRouteSuffixes = Object.freeze([
   "/chat/completion",
   "/file/upload_file"
@@ -143,10 +152,10 @@ export const config = Object.freeze({
   ),
   deepseekHeaders: Object.freeze({
     clientBundleId: process.env.DEEPSEEK_CLIENT_BUNDLE_ID ?? "com.deepseek.chat",
-    clientVersion: process.env.DEEPSEEK_CLIENT_VERSION ?? "2.2.0",
+    clientVersion: process.env.DEEPSEEK_CLIENT_VERSION ?? "2.3.0",
     clientPlatform: process.env.DEEPSEEK_CLIENT_PLATFORM ?? "web",
-    locale: process.env.DEEPSEEK_CLIENT_LOCALE ?? "zh_CN",
-    timezoneOffset: process.env.DEEPSEEK_TIMEZONE_OFFSET ?? "28800",
+    locale: process.env.DEEPSEEK_CLIENT_LOCALE ?? "",
+    timezoneOffset: process.env.DEEPSEEK_TIMEZONE_OFFSET ?? "",
     areaCode: process.env.DEEPSEEK_DEFAULT_AREA_CODE ?? "+86",
     userAgent: process.env.DEEPSEEK_USER_AGENT ?? "",
     secChUa: process.env.DEEPSEEK_SEC_CH_UA ?? "",
@@ -159,8 +168,16 @@ export const config = Object.freeze({
   // changing source code.
   deepseekProfile: Object.freeze({
     platforms: parseCsv(process.env.DEEPSEEK_PROFILE_PLATFORMS, ["Windows", "macOS", "Linux"]),
-    chromeVersions: parseCsv(process.env.DEEPSEEK_PROFILE_CHROME_VERSIONS, ["126", "127", "128", "129", "130"]),
-    sources: parseCsv(process.env.DEEPSEEK_PROFILE_SOURCES, ["chat-web", "chat-web-v2", "chat-web-v3"]),
+    chromeVersions: parseCsv(process.env.DEEPSEEK_PROFILE_CHROME_VERSIONS, ["149", "150", "151"]),
+    sources: parseCsv(process.env.DEEPSEEK_PROFILE_SOURCES, ["chat-web"]),
+    localeProfiles: parseJson(process.env.DEEPSEEK_PROFILE_LOCALE_PROFILES, [
+      {
+        locale: "zh_CN",
+        browserLocale: "zh-CN",
+        acceptLanguage: "zh-CN,zh;q=0.9,en;q=0.8",
+        timezoneOffset: "28800"
+      }
+    ]),
     screenSizes: parseJson(process.env.DEEPSEEK_PROFILE_SCREEN_SIZES, [
       [1920, 1080],
       [1536, 864],
@@ -168,8 +185,33 @@ export const config = Object.freeze({
       [1366, 768],
       [2560, 1440]
     ]),
-    gpuVendors: parseCsv(process.env.DEEPSEEK_PROFILE_GPU_VENDORS, ["Generic GPU Vendor"]),
-    gpuRenderers: parseCsv(process.env.DEEPSEEK_PROFILE_GPU_RENDERERS, ["Generic GPU Renderer"]),
+    gpuProfiles: parseJson(process.env.DEEPSEEK_PROFILE_GPU_PROFILES, [
+      {
+        platform: "Windows",
+        vendor: "Google Inc. (Intel)",
+        renderer: "ANGLE (Intel, Intel(R) UHD Graphics Direct3D11 vs_5_0 ps_5_0)"
+      },
+      {
+        platform: "Windows",
+        vendor: "Google Inc. (NVIDIA)",
+        renderer: "ANGLE (NVIDIA, NVIDIA GeForce Graphics Direct3D11 vs_5_0 ps_5_0)"
+      },
+      {
+        platform: "macOS",
+        vendor: "Apple Inc.",
+        renderer: "Apple GPU"
+      },
+      {
+        platform: "Linux",
+        vendor: "Google Inc. (Mesa)",
+        renderer: "ANGLE (Mesa, Vulkan Graphics)"
+      }
+    ]),
+    // Legacy independent pools remain available as explicit overrides.  Empty
+    // defaults let the coherent platform-specific GPU profiles above drive new
+    // account personas instead of combining unrelated vendor/renderer values.
+    gpuVendors: parseCsv(process.env.DEEPSEEK_PROFILE_GPU_VENDORS, []),
+    gpuRenderers: parseCsv(process.env.DEEPSEEK_PROFILE_GPU_RENDERERS, []),
     hardwareConcurrency: parseCsv(process.env.DEEPSEEK_PROFILE_HARDWARE_CONCURRENCY, ["4", "6", "8", "12", "16"]),
     deviceMemory: parseCsv(process.env.DEEPSEEK_PROFILE_DEVICE_MEMORY, ["4", "8", "16"])
   }),
@@ -177,6 +219,17 @@ export const config = Object.freeze({
     maxRetries: parseNonNegativeNumber(process.env.DEEPSEEK_RISK_MAX_RETRIES, 2, 20),
     baseDelayMs: parseNonNegativeNumber(process.env.DEEPSEEK_RISK_BASE_DELAY_MS, 750, 3_600_000),
     jitterMs: parseNonNegativeNumber(process.env.DEEPSEEK_RISK_JITTER_MS, 500, 3_600_000)
+  }),
+  deepseekCompletion: Object.freeze({
+    inputContentLimit: parsePositiveInteger(
+      process.env.DEEPSEEK_INPUT_CONTENT_LIMIT,
+      160_000,
+      10_000_000
+    ),
+    maxResumes: parseNonNegativeNumber(process.env.DEEPSEEK_STREAM_MAX_RESUMES, 12, 100),
+    maxContinues: parseNonNegativeNumber(process.env.DEEPSEEK_STREAM_MAX_CONTINUES, 12, 100),
+    resumeDelayMs: parseNonNegativeNumber(process.env.DEEPSEEK_STREAM_RESUME_DELAY_MS, 250, 3_600_000),
+    continueDelayMs: parseNonNegativeNumber(process.env.DEEPSEEK_STREAM_CONTINUE_DELAY_MS, 250, 3_600_000)
   }),
   chainOfThoughtOverrideEnabled: (
     process.env.CHAIN_OF_THOUGHT_OVERRIDE_ENABLED

@@ -25,9 +25,12 @@ function toJsonText(value, fallback = "{}") {
   }
 }
 
-function toCdata(text) {
-  const value = toStringSafe(text);
-  return value.replaceAll("]]>", "]]]]><![CDATA[>");
+function escapeXmlAttribute(text) {
+  return toStringSafe(text)
+    .replaceAll("&", "&amp;")
+    .replaceAll("\"", "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
 }
 
 function normalizeContentText(content) {
@@ -83,16 +86,11 @@ function formatPromptToolCalls(toolCalls, toolNameById) {
         toolNameById.set(callId, name);
       }
 
-      return [
-        "  <tool_call>",
-        `    <tool_name>${name}</tool_name>`,
-        `    <parameters><![CDATA[${toCdata(argumentsText)}]]></parameters>`,
-        "  </tool_call>"
-      ].join("\n");
+      return `<tool name="${escapeXmlAttribute(name)}">${argumentsText}</tool>`;
     })
     .filter(Boolean);
 
-  return blocks.length ? `<tool_calls>\n${blocks.join("\n")}\n</tool_calls>` : "";
+  return blocks.join("\n");
 }
 
 function normalizeAssistantPromptContent(message, toolNameById) {
@@ -143,17 +141,17 @@ function formatToolSchema(tool) {
   const definition = getToolFunction(tool);
   const name = getToolName(tool);
   if (!name) {
-    return "";
+    return null;
   }
 
-  return [
-    `Tool: ${name}`,
-    `Description: ${toStringSafe(definition?.description).trim() || "No description available"}`,
-    `Parameters: ${toJsonText(definition?.parameters)}`
-  ].join("\n");
+  return {
+    name,
+    description: toStringSafe(definition?.description).trim(),
+    parameters: definition?.parameters ?? {}
+  };
 }
 
-function buildToolPrompt(policy, tools) {
+export function buildToolPrompt(policy, tools) {
   const allowed = new Set(policy.allowedToolNames);
   const toolSchemas = tools
     .filter((tool) => allowed.has(getToolName(tool)))
@@ -165,40 +163,24 @@ function buildToolPrompt(policy, tools) {
   }
 
   let prompt = [
-    "You have access to these tools:",
+    "You can call the tools in this JSON list:",
+    toJsonText(toolSchemas, "[]"),
     "",
-    toolSchemas.join("\n\n"),
+    "Tool-call format:",
+    "<tool name=\"TOOL_NAME\">{\"argument\":\"value\"}</tool>",
     "",
-    "When calling tools, emit raw XML inline at the exact point where the tool call should appear.",
-    "You may include normal assistant text before and/or after the XML block when appropriate.",
-    "If the user explicitly asks for text before or after the tool call, preserve that text around the XML block instead of omitting it.",
-    "Do not wrap the XML in markdown code fences.",
+    "For multiple independent calls, repeat one complete tag per line:",
+    "<tool name=\"FIRST_TOOL\">{\"argument\":\"value\"}</tool>",
+    "<tool name=\"SECOND_TOOL\">{\"argument\":\"value\"}</tool>",
     "",
-    "<tool_calls>",
-    "  <tool_call>",
-    "    <tool_name>TOOL_NAME_HERE</tool_name>",
-    "    <parameters>{\"key\":\"value\"}</parameters>",
-    "  </tool_call>",
-    "</tool_calls>",
-    "",
-    "Example with surrounding text:",
-    "开始查询。",
-    "<tool_calls>",
-    "  <tool_call>",
-    "    <tool_name>weather</tool_name>",
-    "    <parameters>{\"city\":\"Shanghai\"}</parameters>",
-    "  </tool_call>",
-    "</tool_calls>",
-    "查询已提交。",
-    "",
-    "RULES:",
-    "1) When using a tool, output a raw XML block exactly in the position where that tool call should happen.",
-    "2) <parameters> MUST contain a strict JSON object with double-quoted keys and strings.",
-    "3) Multiple tools go inside one <tool_calls> root.",
-    "4) Normal text is allowed before and after the XML block.",
-    "5) Do not wrap the XML in markdown code fences.",
-    "6) Use only declared tool names and exact schema field names.",
-    "7) If you do not need a tool, answer normally without any XML."
+    "Rules:",
+    "1) If you call any tool, output only tool tags and no prose.",
+    "2) The tag body must be one strict JSON object; property names and string values use double quotes.",
+    "3) Use an exact listed tool name and only argument fields from its schema.",
+    "4) One tag is one call. Do not add any outer wrapper.",
+    "5) Put each call in its own complete tag; never combine multiple calls in one tag.",
+    "6) Emit only calls that can run now. Wait for tool results before making dependent calls.",
+    "7) Do not use markdown fences. If no tool is needed, answer normally without a tool tag."
   ].join("\n");
 
   if (policy.mode === "required") {
@@ -212,12 +194,7 @@ function buildToolPrompt(policy, tools) {
   return prompt;
 }
 
-function injectToolPrompt(messages, tools, policy) {
-  if (!policy.allowedToolNames.length) {
-    return messages;
-  }
-
-  const toolPrompt = buildToolPrompt(policy, tools);
+function injectToolPrompt(messages, toolPrompt) {
   if (!toolPrompt) {
     return messages;
   }
@@ -241,10 +218,12 @@ function injectToolPrompt(messages, tools, policy) {
 export function buildOpenAiPrompt({ messages, toolChoice, tools }) {
   const policy = resolveToolChoicePolicy({ tools, toolChoice });
   const normalizedMessages = normalizeMessagesForPrompt(messages);
-  const promptMessages = injectToolPrompt(normalizedMessages, tools ?? [], policy);
+  const toolPrompt = buildToolPrompt(policy, tools ?? []);
+  const promptMessages = injectToolPrompt(normalizedMessages, toolPrompt);
 
   return {
     prompt: buildPromptFromMessages(promptMessages),
+    toolPrompt,
     toolChoicePolicy: policy,
     toolNames: policy.allowedToolNames
   };

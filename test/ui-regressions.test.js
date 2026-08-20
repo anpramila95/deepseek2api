@@ -33,3 +33,15 @@ test("opening the API key tab refreshes the displayed daily usage", () => {
   assert.match(services, /requestJson\("\/api\/api-keys"\)/);
   assert.match(app, /event\.detail\?\.tab === "keys"[\s\S]*?services\.loadApiKeys\(\)/);
 });
+
+test("a newly revealed API key remains copyable after bootstrap refreshes", () => {
+  const app = publicFile("app.js");
+  const services = publicFile("app-services.js");
+  const chatClient = publicFile("chat-client.js");
+
+  assert.match(app, /getApiKeys:\s*\(\)\s*=>\s*state\.apiKeys/);
+  assert.match(services, /revealedApiKeys\.set\(payload\.record\.id, payload\.key\)/);
+  assert.match(services, /mergeRevealedApiKeys\(keys\)/);
+  assert.match(services, /await bootstrapWithRevealedApiKeys\(\)/);
+  assert.match(chatClient, /deltaDecoder\.consumeAll\(data\)\.forEach/);
+});

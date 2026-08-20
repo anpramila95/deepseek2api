@@ -11,6 +11,9 @@ function defaultState() {
     chainOfThoughtOverride: {
       owners: {}
     },
+    toolParsingMode: {
+      owners: {}
+    },
     incognito: {
       globalEnabled: false,
       owners: {}
@@ -24,13 +27,26 @@ function defaultState() {
       enabled: false
     },
     systemSettings: {
-      captcha: {}
+      captcha: {},
+      inputContentLimit: config.deepseekCompletion.inputContentLimit
     },
     users: []
   };
 }
 
 function normalizeChainOfThoughtOverride(value) {
+  const owners = value?.owners;
+
+  return {
+    owners: owners && typeof owners === "object"
+      ? Object.fromEntries(
+          Object.entries(owners).map(([ownerId, enabled]) => [ownerId, normalizeBoolean(enabled)])
+        )
+      : {}
+  };
+}
+
+function normalizeToolParsingMode(value) {
   const owners = value?.owners;
 
   return {
@@ -104,6 +120,14 @@ function normalizeSystemSettings(value) {
     ?? value?.prompt?.chainOfThoughtOverrideEnabled
     ?? value?.prompt?.expertPromptSuffixEnabled
     ?? value?.prompt?.expertModePromptSuffixEnabled;
+  const toolParsingModeEnabled = value?.toolParsingModeEnabled
+    ?? value?.toolParserEnabled
+    ?? value?.prompt?.toolParsingModeEnabled
+    ?? value?.prompt?.toolParserEnabled;
+  const inputContentLimit = value?.inputContentLimit
+    ?? value?.promptChunkLimit
+    ?? value?.prompt?.inputContentLimit
+    ?? value?.prompt?.chunkLimit;
 
   return {
     captcha: {
@@ -123,9 +147,17 @@ function normalizeSystemSettings(value) {
         ? undefined
         : normalizeNumber(captcha.cooldownMs, undefined, { min: 0, max: 3_600_000 })
     },
+    inputContentLimit: normalizeNumber(
+      inputContentLimit,
+      config.deepseekCompletion.inputContentLimit,
+      { min: 1, max: 10_000_000 }
+    ),
     ...(chainOfThoughtOverrideEnabled === undefined
       ? {}
-      : { chainOfThoughtOverrideEnabled: normalizeBoolean(chainOfThoughtOverrideEnabled) })
+      : { chainOfThoughtOverrideEnabled: normalizeBoolean(chainOfThoughtOverrideEnabled) }),
+    ...(toolParsingModeEnabled === undefined
+      ? {}
+      : { toolParsingModeEnabled: normalizeBoolean(toolParsingModeEnabled) })
   };
 }
 
@@ -195,6 +227,7 @@ function normalizeState(value) {
     accounts,
     apiKeys: normalizeApiKeys(value?.apiKeys),
     chainOfThoughtOverride: normalizeChainOfThoughtOverride(value?.chainOfThoughtOverride),
+    toolParsingMode: normalizeToolParsingMode(value?.toolParsingMode),
     incognito,
     invites: normalizeInvites(value?.invites),
     registration: normalizeRegistration(value?.registration),

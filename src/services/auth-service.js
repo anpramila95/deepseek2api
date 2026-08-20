@@ -73,7 +73,14 @@ function createLocalUserSession(user) {
   });
 }
 
-function buildAccountRecord({ deviceId, deviceProfile, loginResult, loginValue, ownerId, password }) {
+export function buildDeepseekAccountForOwner({
+  deviceId,
+  deviceProfile,
+  loginResult,
+  loginValue,
+  ownerId,
+  password
+}) {
   const user = loginResult.data.biz_data.user;
   const emailMasked = maskIdentifier(user.email ?? loginValue);
   const mobileMasked = maskIdentifier(user.mobile_number ?? "");
@@ -83,7 +90,7 @@ function buildAccountRecord({ deviceId, deviceProfile, loginResult, loginValue, 
     ? { credentialMode: "persistent", loginValue, password }
     : { credentialMode: "ephemeral", loginValue: loginValueMasked, password: "" };
 
-  return saveAccount({
+  return {
     ownerId,
     deepseekUserId: user.id,
     ...credentialPatch,
@@ -106,13 +113,15 @@ function buildAccountRecord({ deviceId, deviceProfile, loginResult, loginValue, 
       instruction: null,
       rid: null
     },
+    dataOptimizationDisabled: false,
+    lastPrivacyUpdate: null,
     settingsReported: false,
     lastSettingsReport: null
-  });
+  };
 }
 
 export function saveDeepseekAccountForOwner(options) {
-  return buildAccountRecord(options);
+  return saveAccount(buildDeepseekAccountForOwner(options));
 }
 
 export function loginAsLocalUser(username, password) {
