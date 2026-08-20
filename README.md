@@ -76,7 +76,6 @@ npm test
 
 ## 文档库
 
-- [文档索引](docs/README.md)
 - [快速上手](docs/getting-started.md)
 - [配置参考](docs/configuration.md)
 - [API 参考](docs/api-reference.md)

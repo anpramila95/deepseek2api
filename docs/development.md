@@ -189,5 +189,5 @@ git check-ignore -v .env data/app.json output .playwright-cli
 - 新逻辑有对应测试；
 - 路由和存储仍执行所有权检查；
 - 错误信息经过脱敏；
-- README 与文档索引中的链接有效；
+- README 与各专题文档中的链接有效；
 - 代理白名单没有意外扩大。
