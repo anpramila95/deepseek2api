@@ -5,16 +5,13 @@ import { createBaseHeaders, refreshAccountToken } from "./deepseek-auth.js";
 import {
   classifyProtocolResponse,
   createProtocolRequestContext,
-  resolveRetryAfterMs
+  resolveRetryAfterMs,
 } from "./deepseek-protocol.js";
 import {
   attachShumeiVerificationToBody,
-  inspectResponseForCaptcha
+  inspectResponseForCaptcha,
 } from "./captcha-service.js";
-import {
-  isInvalidPowResponseText,
-  isPowChallengeFresh
-} from "./pow-utils.js";
+import { isInvalidPowResponseText, isPowChallengeFresh } from "./pow-utils.js";
 
 const powChallengeCache = new Map();
 
@@ -39,17 +36,28 @@ function isFreshChallenge(challenge) {
 }
 
 async function fetchPowChallenge(account, path) {
-  const requestContext = createProtocolRequestContext(account, "/chat/create_pow_challenge", {
-    method: "POST"
-  });
-  const response = await fetch(`${config.deepseekBaseUrl}${resolveDeepseekApiPath("/chat/create_pow_challenge")}`, {
-    method: "POST",
-    headers: createBaseHeaders(account.token, {
-      ...requestContext.headers,
-      "content-type": "application/json"
-    }, requestContext.profile),
-    body: JSON.stringify({ target_path: path })
-  });
+  const requestContext = createProtocolRequestContext(
+    account,
+    "/chat/create_pow_challenge",
+    {
+      method: "POST",
+    },
+  );
+  const response = await fetch(
+    `${config.deepseekBaseUrl}${resolveDeepseekApiPath("/chat/create_pow_challenge")}`,
+    {
+      method: "POST",
+      headers: createBaseHeaders(
+        account.token,
+        {
+          ...requestContext.headers,
+          "content-type": "application/json",
+        },
+        requestContext.profile,
+      ),
+      body: JSON.stringify({ target_path: path }),
+    },
+  );
 
   let payload;
   let responseText = "";
@@ -57,17 +65,89 @@ async function fetchPowChallenge(account, path) {
     responseText = await response.text();
     payload = JSON.parse(responseText);
   } catch {
-    throw createSafeUpstreamError("PoW challenge request failed: unable to parse upstream response", {
-      status: response.status,
-      body: responseText
-    });
+    throw createSafeUpstreamError(
+      "PoW challenge request failed: unable to parse upstream response",
+      {
+        status: response.status,
+        body: responseText,
+      },
+    );
   }
   const challenge = payload?.data?.biz_data?.challenge;
   if (!response.ok || payload?.data?.biz_code !== 0 || !challenge) {
-    throw new Error(payload?.data?.biz_msg || payload?.msg || "Failed to create PoW challenge");
+    throw new Error(
+      payload?.data?.biz_msg ||
+        payload?.msg ||
+        "Failed to create PoW challenge",
+    );
   }
 
   return challenge;
+}
+
+export async function fetchPowGuestChallenge(targetPath = "/v0/users/create_email_verification_code") {
+  const requestContext = createProtocolRequestContext(
+    null,
+    "/users/create_guest_challenge",
+    {
+      method: "POST",
+    },
+  );
+  const response = await fetch(
+    `${config.deepseekBaseUrl}/api/v0/users/create_guest_challenge`,
+    {
+      method: "POST",
+      headers: createBaseHeaders(
+        undefined,
+        {
+          ...requestContext.headers,
+          "content-type": "application/json",
+        },
+        requestContext.profile,
+      ),
+      body: JSON.stringify({ target_path: targetPath }),
+    },
+  );
+
+  let payload;
+  let responseText = "";
+  try {
+    responseText = await response.text();
+    payload = JSON.parse(responseText);
+  } catch {
+    throw createSafeUpstreamError(
+      "Guest PoW challenge request failed: unable to parse upstream response",
+      { status: response.status, body: responseText },
+    );
+  }
+
+  const challenge = payload?.data?.biz_data?.guest_challenge;
+  if (!response.ok || payload?.code !== 0 || payload?.data?.biz_code !== 0 || !challenge) {
+    throw new Error(
+      payload?.data?.biz_msg || payload?.msg || "Failed to create guest PoW challenge",
+    );
+  }
+
+  return challenge;
+}
+
+export async function createGuestPowHeader(targetPath = "/v0/users/create_email_verification_code") {
+  const challenge = await fetchPowGuestChallenge(targetPath);
+  const expireAt = challenge?.expire_at ?? challenge?.expireAt;
+  const solved = await solvePowChallenge({
+    ...challenge,
+    expire_at: expireAt,
+    expireAt,
+  });
+
+  return Buffer.from(JSON.stringify({
+    algorithm: solved.algorithm,
+    challenge: solved.challenge,
+    salt: solved.salt,
+    answer: solved.answer,
+    signature: solved.signature,
+    target_path: targetPath,
+  })).toString("base64");
 }
 
 async function getPowChallenge(account, path, { forceFresh = false } = {}) {
@@ -117,7 +197,7 @@ async function createPowHeader(account, path, { forceFresh = false } = {}) {
   const solved = await solvePowChallenge({
     ...challenge,
     expire_at: expireAt,
-    expireAt
+    expireAt,
   });
 
   prefetchPowChallenge(account, path);
@@ -129,14 +209,18 @@ async function createPowHeader(account, path, { forceFresh = false } = {}) {
       salt: solved.salt,
       answer: solved.answer,
       signature: solved.signature,
-      target_path: path
-    })
+      target_path: path,
+    }),
   ).toString("base64");
 }
 
 async function responseContainsInvalidPow(response) {
   const contentType = response?.headers?.get?.("content-type") ?? "";
-  if (!response || contentType.includes("text/event-stream") || typeof response.clone !== "function") {
+  if (
+    !response ||
+    contentType.includes("text/event-stream") ||
+    typeof response.clone !== "function"
+  ) {
     return false;
   }
 
@@ -154,19 +238,29 @@ async function performRequest({
   query,
   body,
   headers,
-  forceFreshPow = false
+  forceFreshPow = false,
 }) {
   const targetPath = resolveDeepseekApiPath(path);
-  const requestContext = createProtocolRequestContext(account, targetPath, { method });
-  const finalHeaders = createBaseHeaders(account.token, {
-    ...requestContext.headers,
-    ...headers
-  }, requestContext.profile);
+  const requestContext = createProtocolRequestContext(account, targetPath, {
+    method,
+  });
+  const finalHeaders = createBaseHeaders(
+    account.token,
+    {
+      ...requestContext.headers,
+      ...headers,
+    },
+    requestContext.profile,
+  );
 
   if (config.powProtectedPaths.has(targetPath)) {
-    finalHeaders["X-DS-PoW-Response"] = await createPowHeader(account, targetPath, {
-      forceFresh: forceFreshPow
-    });
+    finalHeaders["X-DS-PoW-Response"] = await createPowHeader(
+      account,
+      targetPath,
+      {
+        forceFresh: forceFreshPow,
+      },
+    );
   }
 
   const response = await fetch(buildTargetUrl(targetPath, query), {
@@ -175,14 +269,14 @@ async function performRequest({
     body: attachShumeiVerificationToBody({
       account,
       body,
-      headers: finalHeaders
-    })
+      headers: finalHeaders,
+    }),
   });
 
   if (
-    !forceFreshPow
-    && config.powProtectedPaths.has(targetPath)
-    && await responseContainsInvalidPow(response)
+    !forceFreshPow &&
+    config.powProtectedPaths.has(targetPath) &&
+    (await responseContainsInvalidPow(response))
   ) {
     invalidatePowChallenge(account, targetPath);
     return performRequest({
@@ -192,7 +286,7 @@ async function performRequest({
       query,
       body,
       headers,
-      forceFreshPow: true
+      forceFreshPow: true,
     });
   }
 
@@ -218,19 +312,18 @@ async function maybeRefreshAccount(response, account) {
   const classification = classifyProtocolResponse({
     status: response.status,
     payload,
-    headers: response.headers
+    headers: response.headers,
   });
   const bizCode = payload?.data?.biz_code ?? payload?.code;
-  const shouldRefresh = classification.kind === "auth"
-    || bizCode === 40002
-    || bizCode === 40003;
+  const shouldRefresh =
+    classification.kind === "auth" || bizCode === 40002 || bizCode === 40003;
 
   if (!shouldRefresh) {
     const responseHeaders = new Headers(response.headers);
     if (classification.kind === "rate_limit") {
       responseHeaders.set(
         "x-deepseek-retry-after-ms",
-        String(resolveRetryAfterMs(response.headers, 0))
+        String(resolveRetryAfterMs(response.headers, 0)),
       );
     }
     return {
@@ -238,8 +331,8 @@ async function maybeRefreshAccount(response, account) {
       response: new Response(buffer, {
         headers: responseHeaders,
         status: response.status,
-        statusText: response.statusText
-      })
+        statusText: response.statusText,
+      }),
     };
   }
 
@@ -255,53 +348,56 @@ export async function proxyDeepseekRequest(options) {
   if (firstPass.response) {
     const captchaPass = await inspectResponseForCaptcha({
       account: firstPass.refreshedAccount,
-      response: firstPass.response
+      response: firstPass.response,
     });
     if (!captchaPass.retry) {
       return {
         refreshedAccount: firstPass.refreshedAccount,
-        response: captchaPass.response
+        response: captchaPass.response,
       };
     }
 
     const retriedResponse = await performRequest({
       ...options,
-      account: captchaPass.account
+      account: captchaPass.account,
     });
     return {
       refreshedAccount: captchaPass.account,
-      response: retriedResponse
+      response: retriedResponse,
     };
   }
 
   const retriedResponse = await performRequest({
     ...options,
-    account: firstPass.refreshedAccount
+    account: firstPass.refreshedAccount,
   });
 
-  const secondPass = await maybeRefreshAccount(retriedResponse, firstPass.refreshedAccount);
+  const secondPass = await maybeRefreshAccount(
+    retriedResponse,
+    firstPass.refreshedAccount,
+  );
   if (!secondPass.response) {
     throw new Error("DeepSeek token refresh failed");
   }
 
   const captchaPass = await inspectResponseForCaptcha({
     account: secondPass.refreshedAccount,
-    response: secondPass.response
+    response: secondPass.response,
   });
   if (!captchaPass.retry) {
     return {
       refreshedAccount: secondPass.refreshedAccount,
-      response: captchaPass.response
+      response: captchaPass.response,
     };
   }
 
   const captchaRetriedResponse = await performRequest({
     ...options,
-    account: captchaPass.account
+    account: captchaPass.account,
   });
 
   return {
     refreshedAccount: captchaPass.account,
-    response: captchaRetriedResponse
+    response: captchaRetriedResponse,
   };
 }

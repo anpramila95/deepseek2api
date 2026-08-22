@@ -203,8 +203,11 @@ export function createAppServices(options) {
   }
 
   async function loadRequestLogs() {
-    const payload = await requestJson("/api/request-logs?limit=120");
-    setAppState({ requestLogs: payload.logs ?? [] });
+    const [payload, usagePayload] = await Promise.all([
+      requestJson("/api/request-logs?limit=120"),
+      requestJson("/api/usage-stats")
+    ]);
+    setAppState({ requestLogs: payload.logs ?? [], usageStats: usagePayload.usage ?? {} });
     view.renderRequestLogs?.();
     view.renderDashboard?.();
     view.renderMetrics?.();

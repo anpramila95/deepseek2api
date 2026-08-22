@@ -34,6 +34,7 @@ export const INITIAL_STATE = Object.freeze({
   sessions: [],
   messages: [],
   requestLogs: [],
+  usageStats: { totalTokens: 0, promptTokens: 0, completionTokens: 0, requests: 0, byPath: {} },
   draftFiles: [],
   isSending: false,
   discoveredPaths: []
@@ -53,7 +54,7 @@ export const ELEMENT_IDS = [
   "explorer-query", "file-input", "incognito-description", "incognito-form",
   "incognito-label", "incognito-status", "incognito-summary", "incognito-toggle", "invite-required-toggle",
   "login-form", "login-password", "login-status", "login-username", "login-view", "logout-button", "message-count",
-  "messages", "metric-session-count", "model-select", "new-session", "prompt-input", "refresh-sessions", "register-form",
+  "messages", "metric-session-count", "model-select", "new-session", "prompt-input", "refresh-sessions", "toggle-sidebar", "register-form",
   "register-invite-code", "register-invite-group", "register-password", "register-status", "register-username",
   "refresh-request-logs", "request-log-list", "response-mode", "role-label", "send-button", "session-caption", "session-count", "sessions",
   "settings-auto-solve", "settings-clear-yescaptcha-key", "settings-cooldown-ms", "settings-endpoint",

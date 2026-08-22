@@ -21,6 +21,8 @@ import {
   importRawDeepseekAccountForOwner
 } from "../services/account-import-service.js";
 import { maskIdentifier } from "../utils/privacy.js";
+import { readStore } from "../storage/store.js";
+import { createGuestPowHeader } from "../services/deepseek-proxy.js";
 import {
   attemptCaptchaAutoSolveForAccount,
   clearCaptchaState,
@@ -197,6 +199,21 @@ function resolveApiKeyAccount(session, requestedAccountId) {
 }
 
 export async function handlePrivateApiRequest({ request, response, session, url }) {
+  if (request.method === "GET" && url.pathname === "/api/token_pow_guest") {
+    const targetPath = url.searchParams.get("target_path") || "/v0/users/create_email_verification_code";
+    const powResponse = await createGuestPowHeader(targetPath);
+    sendJson(response, 200, {
+      "x-ds-pow-response": powResponse,
+      target_path: targetPath
+    });
+    return true;
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/usage-stats") {
+    sendJson(response, 200, { usage: readStore().usageStats });
+    return true;
+  }
+
   if (request.method === "GET" && url.pathname === "/api/request-logs") {
     sendJson(response, 200, {
       logs: listRequestLogs({

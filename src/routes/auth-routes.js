@@ -4,6 +4,7 @@ import { getProtocolManifest } from "../services/deepseek-protocol.js";
 import { loginAsAdmin, loginAsLocalUser, registerLocalUserSession } from "../services/auth-service.js";
 import { deleteSession } from "../services/session-service.js";
 import { clearCookie, parseJsonBody, readRequestBody, sendError, sendJson, setCookie } from "../utils/http.js";
+import { solveWaf } from "../services/waf-solver.js";
 
 async function readJsonRequest(request) {
   return parseJsonBody(await readRequestBody(request)) ?? {};
@@ -66,6 +67,20 @@ function handleLogoutRequest(response, session) {
 }
 
 export async function handlePublicApiRequest({ request, response, session, url }) {
+  if (url.pathname === "/api/token") {
+    try {
+      const siteUrl = `${config.deepseekBaseUrl}/sign_in`;
+      const result = await solveWaf(siteUrl);
+      sendJson(response, 200, {
+        token: result.token,
+        cookie: result.cookie
+      });
+    } catch (error) {
+      sendError(response, 500, error.message);
+    }
+    return true;
+  }
+
   if (request.method === "GET" && url.pathname === "/api/me") {
     sendJson(response, 200, session ? buildSessionPayload(session) : buildAnonymousPayload());
     return true;

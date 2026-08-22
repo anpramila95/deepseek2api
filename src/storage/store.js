@@ -30,7 +30,14 @@ function defaultState() {
       captcha: {},
       inputContentLimit: config.deepseekCompletion.inputContentLimit
     },
-    users: []
+    users: [],
+    usageStats: {
+      totalTokens: 0,
+      promptTokens: 0,
+      completionTokens: 0,
+      requests: 0,
+      byPath: {}
+    }
   };
 }
 
@@ -234,7 +241,16 @@ function normalizeState(value) {
     sessions: Array.isArray(value?.sessions) ? value.sessions : [],
     sharedAccountMode: normalizeSharedAccountMode(value?.sharedAccountMode, incognito, accounts),
     systemSettings: normalizeSystemSettings(value?.systemSettings),
-    users: normalizeUsers(value?.users)
+    users: normalizeUsers(value?.users),
+    usageStats: {
+      totalTokens: normalizeNumber(value?.usageStats?.totalTokens, 0),
+      promptTokens: normalizeNumber(value?.usageStats?.promptTokens, 0),
+      completionTokens: normalizeNumber(value?.usageStats?.completionTokens, 0),
+      requests: normalizeNumber(value?.usageStats?.requests, 0),
+      byPath: value?.usageStats?.byPath && typeof value.usageStats.byPath === "object"
+        ? value.usageStats.byPath
+        : {}
+    }
   };
 }
 

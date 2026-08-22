@@ -232,6 +232,23 @@ function bindChainOfThoughtOverrideAction({ els, onToggleChainOfThoughtOverride,
 }
 
 function bindSessionActions({ els, onCreateSession, onRefreshSessions, setStatus }) {
+  const sidebar = document.querySelector(".sidebar");
+  const toggleSidebar = els["toggle-sidebar"];
+  const sidebarCollapsed = localStorage.getItem("deepseek2api-sidebar-collapsed") === "true";
+
+  const setSidebarCollapsed = (collapsed) => {
+    document.body.classList.toggle("sidebar-collapsed", collapsed);
+    toggleSidebar.setAttribute("aria-expanded", String(!collapsed));
+    toggleSidebar.title = collapsed ? "Mở sidebar" : "Thu gọn sidebar";
+    toggleSidebar.setAttribute("aria-label", toggleSidebar.title);
+    toggleSidebar.innerHTML = `<i data-lucide="panel-left-${collapsed ? "open" : "close"}"></i>`;
+    window.lucide?.createIcons();
+    localStorage.setItem("deepseek2api-sidebar-collapsed", String(collapsed));
+  };
+
+  setSidebarCollapsed(sidebarCollapsed);
+  toggleSidebar.onclick = () => setSidebarCollapsed(!document.body.classList.contains("sidebar-collapsed"));
+
   els["refresh-sessions"].onclick = async () => {
     setStatus(els["app-status"], "");
 

@@ -1,4 +1,5 @@
 import { redactSensitiveText } from "../utils/privacy.js";
+import { updateStore } from "../storage/store.js";
 
 const MAX_LOGS = 500;
 const requestLogs = [];
@@ -15,10 +16,29 @@ export function recordRequestLog(entry) {
     accountId: entry.accountId || "",
     status: entry.status ?? null,
     durationMs: entry.durationMs ?? null,
-    error: redactSensitiveText(entry.error || "")
+    error: redactSensitiveText(entry.error || ""),
+    usage: {
+      promptTokens: Number(entry.usage?.promptTokens) || 0,
+      completionTokens: Number(entry.usage?.completionTokens) || 0,
+      totalTokens: Number(entry.usage?.totalTokens) || 0
+    }
   };
 
   requestLogs.unshift(record);
+  updateStore((state) => {
+    const usage = state.usageStats ?? {};
+    const path = record.path || "unknown";
+    return {
+      ...state,
+      usageStats: {
+        totalTokens: (usage.totalTokens || 0) + record.usage.totalTokens,
+        promptTokens: (usage.promptTokens || 0) + record.usage.promptTokens,
+        completionTokens: (usage.completionTokens || 0) + record.usage.completionTokens,
+        requests: (usage.requests || 0) + 1,
+        byPath: { ...(usage.byPath || {}), [path]: ((usage.byPath || {})[path] || 0) + 1 }
+      }
+    };
+  });
   if (requestLogs.length > MAX_LOGS) {
     requestLogs.length = MAX_LOGS;
   }

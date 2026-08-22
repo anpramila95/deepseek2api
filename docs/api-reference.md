@@ -193,6 +193,7 @@ Reasoner 模型使用结构化字段：
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
+| `GET` | `/api/token` | 通过 solveWaf 获取 AWS WAF Token 和 Cookie |
 | `GET` | `/api/me` | 匿名状态或当前会话载荷 |
 | `GET` | `/api/discovery` | 版本化代理白名单和协议清单 |
 | `GET` | `/api/protocol` | 上游版本、路由分组和风控策略 |

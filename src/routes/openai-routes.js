@@ -21,6 +21,12 @@ function isModelsPath(pathname) {
     pathname === "/v1/models" || pathname === "/v1/models/";
 }
 
+function estimateUsage(body, payload = null) {
+  const promptTokens = Math.ceil(JSON.stringify(body?.messages ?? []).length / 4);
+  const completionTokens = Number(payload?.usage?.completion_tokens) || 0;
+  return { promptTokens, completionTokens, totalTokens: promptTokens + completionTokens };
+}
+
 function isChatCompletionsPath(pathname) {
   return pathname === "/v1/chat/completions" || pathname === "/v1/chat/completions/";
 }
@@ -108,7 +114,8 @@ async function handleChatCompletionsRequest(request, response, apiKeyRecord) {
           ownerId: apiKeyRecord.ownerId,
           accountId: account.id,
           status: 200,
-          durationMs: Date.now() - startedAt
+          durationMs: Date.now() - startedAt,
+          usage: estimateUsage(body)
         });
         return;
       }
@@ -130,7 +137,8 @@ async function handleChatCompletionsRequest(request, response, apiKeyRecord) {
         ownerId: apiKeyRecord.ownerId,
         accountId: account.id,
         status: 200,
-        durationMs: Date.now() - startedAt
+        durationMs: Date.now() - startedAt,
+        usage: estimateUsage(body, payload)
       });
     } catch (error) {
       recordRequestLog({

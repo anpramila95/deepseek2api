@@ -207,11 +207,15 @@ function renderDashboardMetricCards(state) {
   const failedLogs = state.requestLogs.filter((log) => Number(log.status) >= 400).length;
   const successRate = totalLogs ? Math.round(((totalLogs - failedLogs) / totalLogs) * 100) : 100;
   const latestLog = state.requestLogs[0];
+  const usage = state.usageStats ?? {};
+  const apiTypes = Object.entries(usage.byPath ?? {}).map(([path, count]) => `${path}: ${count}`).join(" · ") || "Chưa có dữ liệu";
   const cards = [
     ["Tài khoản khả dụng", health.online, `${health.captcha} captcha / ${health.offline} ngoại tuyến`, "ok"],
     ["API Key", state.apiKeys.length, "Số lượng key đã tạo", "info"],
     ["Tỷ lệ thành công", `${successRate}%`, `${totalLogs} yêu cầu gần đây`, failedLogs ? "warn" : "ok"],
-    ["Yêu cầu mới nhất", latestLog?.status ?? "-", latestLog ? latestLog.path : "Chưa có yêu cầu", Number(latestLog?.status) >= 400 ? "danger" : "info"]
+    ["Yêu cầu mới nhất", latestLog?.status ?? "-", latestLog ? latestLog.path : "Chưa có yêu cầu", Number(latestLog?.status) >= 400 ? "danger" : "info"],
+    ["Token đã dùng", Number(usage.totalTokens ?? 0).toLocaleString("vi-VN"), `${Number(usage.promptTokens ?? 0).toLocaleString("vi-VN")} input · ${Number(usage.completionTokens ?? 0).toLocaleString("vi-VN")} output`, "info"],
+    ["Kiểu gọi API", Number(usage.requests ?? 0), apiTypes, "ok"]
   ];
 
   return cards.map(([label, value, detail, tone]) => `

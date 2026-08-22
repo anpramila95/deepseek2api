@@ -3,13 +3,13 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#11130f">
+    <meta name="theme-color" content="#ff772f">
     <title>Cổng kết nối cục bộ DeepSeek2API</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="/app.css?v=20260729-1">
+    <link rel="stylesheet" href="/app.css?v=20260822-orange">
   </head>
   <body data-theme="starry" data-active-tab="dashboard">
     <div class="app-shell">
@@ -148,7 +148,8 @@
               <div><span class="panel-label">Sessions</span><h2>Phiên</h2></div>
               <div class="inline-actions">
                 <span id="session-count" class="metric-pill">0</span>
-                <button id="refresh-sessions" type="button" class="icon-button inverse" title="Làm mới phiên" aria-label="Làm mới phiên" data-ripple><i data-lucide="refresh-cw"></i></button>
+                <button id="toggle-sidebar" type="button" class="icon-button inverse sidebar-toggle" title="Thu gọn sidebar" aria-label="Thu gọn sidebar" aria-expanded="true" data-ripple><i data-lucide="panel-left-close"></i></button>
+                                <button id="refresh-sessions" type="button" class="icon-button inverse" title="Làm mới phiên" aria-label="Làm mới phiên" data-ripple><i data-lucide="refresh-cw"></i></button>
               </div>
             </div>
             <p id="session-caption" class="muted section-copy">Hiển thị theo thời gian cập nhật</p>
