@@ -64,7 +64,7 @@ export function createAppServices(options) {
     try {
       const response = await fetch(`/api/api-keys/${keyId}`, { method: "DELETE" });
       if (!response.ok) {
-        throw new Error(`删除失败: HTTP ${response.status}`);
+        throw new Error(`Xóa thất bại: HTTP ${response.status}`);
       }
       revealedApiKeys.delete(keyId);
       await bootstrapWithRevealedApiKeys();
@@ -103,24 +103,26 @@ export function createAppServices(options) {
     await loadSessions();
   }
 
-  async function addAccount({ password, username }) {
+  async function addAccount({ password, username, rawJson }) {
     const payload = await postJson("/api/accounts", {
       username,
-      password
+      password,
+      rawJson
     });
 
-    els["account-password"].value = "";
+    if (els["account-password"]) els["account-password"].value = "";
+    if (els["account-raw-json"]) els["account-raw-json"].value = "";
     setAppState({ selectedAccountId: payload.account.id });
     await bootstrapWithRevealedApiKeys();
   }
 
   async function deleteAccount(accountId) {
-    setStatus(els["account-status"], "删除中...");
+    setStatus(els["account-status"], "Đang xóa...");
 
     try {
       await requestJson(`/api/accounts/${accountId}`, { method: "DELETE" });
       await bootstrapWithRevealedApiKeys();
-      setStatus(els["account-status"], "已删除绑定账号。");
+      setStatus(els["account-status"], "Đã xóa tài khoản liên kết.");
     } catch (error) {
       setStatus(els["account-status"], error.message);
     }
@@ -172,7 +174,7 @@ export function createAppServices(options) {
     if (payload.record?.id && payload.key) {
       revealedApiKeys.set(payload.record.id, payload.key);
     }
-    setStatus(els["api-key-output"], `新 Key：\n${payload.key}`);
+    setStatus(els["api-key-output"], `Khóa API mới:\n${payload.key}`);
     els["api-key-label"].value = "";
     els["api-key-plain"].value = "";
     els["api-key-tool-calls"].checked = false;

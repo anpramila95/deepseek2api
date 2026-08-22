@@ -1,5 +1,5 @@
 import { config, resolveDeepseekApiPath } from "../config.js";
-import { createSafeUpstreamError } from "../utils/privacy.js";
+import { createSafeUpstreamError, maskIdentifier } from "../utils/privacy.js";
 import { saveAccount } from "./account-service.js";
 import {
   createDeepseekClientHeaders,
@@ -38,8 +38,14 @@ function buildLoginPayload(loginValue, password, profile) {
 
 export async function loginToDeepseek({ loginValue, password, deviceId, deviceProfile }) {
   const profile = resolveDeepseekClientProfile(deviceProfile ?? { deviceId });
+  const maskedUser = maskIdentifier(loginValue);
+  console.error(`[DeepSeek Auth] Resolving profile (user: "${maskedUser}", deviceId: ${profile.loginDeviceId}, OS: ${profile.os})`);
+
   const requestContext = createProtocolRequestContext(profile, "/users/login", { method: "POST" });
-  const response = await fetch(`${config.deepseekBaseUrl}${resolveDeepseekApiPath("/users/login")}`, {
+  const targetUrl = `${config.deepseekBaseUrl}${resolveDeepseekApiPath("/users/login")}`;
+  console.error(`[DeepSeek Auth] Sending POST request to ${targetUrl}`);
+
+  const response = await fetch(targetUrl, {
     method: "POST",
     headers: createBaseHeaders("", {
       ...requestContext.headers,
@@ -48,23 +54,88 @@ export async function loginToDeepseek({ loginValue, password, deviceId, devicePr
     body: JSON.stringify(buildLoginPayload(loginValue, password, profile))
   });
 
-  let result;
+  const wafAction = response.headers.get("x-amzn-waf-action");
+  console.error(`[DeepSeek Auth] Response status: HTTP ${response.status} ${response.statusText}${wafAction ? ` (x-amzn-waf-action: ${wafAction})` : ""}`);
+
   let responseText = "";
   try {
     responseText = await response.text();
+  } catch (err) {
+    console.error(`[DeepSeek Auth] Failed to read response body:`, err);
+    throw createSafeUpstreamError("DeepSeek login failed: unable to read upstream response", {
+      status: response.status,
+      body: ""
+    });
+  }
+
+  if (response.status === 202 || wafAction === "challenge") {
+    console.error(`[DeepSeek Auth] CloudFront / AWS WAF challenge encountered (HTTP ${response.status})`);
+    throw createSafeUpstreamError("DeepSeek login failed: CloudFront / AWS WAF challenge encountered", {
+      status: response.status,
+      body: responseText
+    });
+  }
+
+  let result;
+  try {
     result = JSON.parse(responseText);
   } catch {
+    console.error(`[DeepSeek Auth] Non-JSON response received (HTTP ${response.status}):`, responseText.slice(0, 200));
     throw createSafeUpstreamError("DeepSeek login failed: unable to parse upstream response", {
       status: response.status,
       body: responseText
     });
   }
 
+  console.error(`[DeepSeek Auth] DeepSeek response parsed. biz_code: ${result.data?.biz_code}`);
+
   if (result.data?.biz_code !== 0) {
-    throw new Error(result.msg || result.data?.biz_msg || "DeepSeek login failed");
+    const errorMsg = result.msg || result.data?.biz_msg || "DeepSeek login failed";
+    console.error(`[DeepSeek Auth] Login biz_code error (${result.data?.biz_code}): ${errorMsg}`);
+    throw new Error(errorMsg);
   }
 
+  console.error(`[DeepSeek Auth] Login successful for user "${maskedUser}"`);
   return result;
+}
+
+export async function fetchCurrentDeepseekUser(token, profileSource = {}) {
+  const profile = resolveDeepseekClientProfile(profileSource);
+  const requestContext = createProtocolRequestContext(profile, "/users/current", { method: "GET" });
+  const targetUrl = `${config.deepseekBaseUrl}${resolveDeepseekApiPath("/users/current")}`;
+
+  const response = await fetch(targetUrl, {
+    method: "GET",
+    headers: createBaseHeaders(token, {
+      ...requestContext.headers
+    }, profile)
+  });
+
+  let responseText = "";
+  try {
+    responseText = await response.text();
+  } catch (err) {
+    throw createSafeUpstreamError("Unable to read upstream response for /users/current", {
+      status: response.status,
+      body: ""
+    });
+  }
+
+  let result;
+  try {
+    result = JSON.parse(responseText);
+  } catch {
+    throw createSafeUpstreamError("Unable to parse upstream response for /users/current", {
+      status: response.status,
+      body: responseText
+    });
+  }
+
+  if (result.data?.biz_code !== 0 && result.code !== 0) {
+    throw new Error(result.msg || result.data?.biz_msg || "Token không hợp lệ hoặc đã hết hạn");
+  }
+
+  return result.data?.biz_data?.user ?? result.data?.user ?? result.data;
 }
 
 export async function refreshAccountToken(account) {

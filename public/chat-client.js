@@ -61,7 +61,7 @@ export function resolveDraftFileIds(files) {
   const blockedFiles = files.filter((file) => file.status !== READY_FILE_STATUS);
   if (blockedFiles.length) {
     const names = blockedFiles.map((file) => file.fileName).join(", ");
-    throw new Error(`附件未就绪或上传失败：${names}`);
+    throw new Error(`Đính kèm chưa sẵn sàng hoặc tải lên thất bại: ${names}`);
   }
 
   return files.map((file) => file.id).filter(Boolean);

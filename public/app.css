@@ -1332,6 +1332,7 @@ details.message-section.thinking > [data-section-text] {
 }
 
 .form-grid,
+.form-grid-json,
 .explorer-grid {
   align-items: end;
   display: grid;
@@ -1340,6 +1341,17 @@ details.message-section.thinking > [data-section-text] {
 
 .form-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+}
+
+.form-grid-json {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.form-grid-json textarea {
+  font-family: monospace;
+  font-size: 0.82rem;
+  resize: vertical;
+  min-height: 42px;
 }
 
 .form-grid.two-cols,

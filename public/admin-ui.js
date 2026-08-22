@@ -2,10 +2,10 @@ import { createEmptyState, escapeHtml } from "/utils.js";
 
 function formatTimestamp(value) {
   if (!value) {
-    return "未使用";
+    return "Chưa dùng";
   }
 
-  return new Intl.DateTimeFormat("zh-CN", {
+  return new Intl.DateTimeFormat("vi-VN", {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -15,15 +15,15 @@ function formatTimestamp(value) {
 }
 
 function formatLimitValue(value, unit) {
-  return value === null ? `不限${unit}` : `${value}${unit}`;
+  return value === null ? `Không giới hạn ${unit}` : `${value} ${unit}`;
 }
 
 function renderInviteMeta(invite) {
   if (!invite.usedAt) {
-    return `未使用 · ${formatTimestamp(invite.createdAt)}`;
+    return `Chưa dùng · ${formatTimestamp(invite.createdAt)}`;
   }
 
-  return `${invite.usedByUsername || "未知用户"} · ${formatTimestamp(invite.usedAt)}`;
+  return `${invite.usedByUsername || "Người dùng không xác định"} · ${formatTimestamp(invite.usedAt)}`;
 }
 
 function renderInviteItem(invite) {
@@ -31,15 +31,15 @@ function renderInviteItem(invite) {
     <article class="admin-list-item">
       <label class="admin-select">
         <input type="checkbox" data-invite-select value="${escapeHtml(invite.id)}">
-        <span>选择</span>
+        <span>Chọn</span>
       </label>
       <div class="admin-list-copy">
         <strong>${escapeHtml(invite.code)}</strong>
         <span>${escapeHtml(renderInviteMeta(invite))}</span>
       </div>
       <div class="inline-actions">
-        <span class="chip">${invite.usedAt ? "已用" : "可用"}</span>
-        <button type="button" class="button-ghost button-danger" data-invite-delete="${escapeHtml(invite.id)}" data-ripple>删除</button>
+        <span class="chip">${invite.usedAt ? "Đã dùng" : "Khả dụng"}</span>
+        <button type="button" class="button-ghost button-danger" data-invite-delete="${escapeHtml(invite.id)}" data-ripple>Xóa</button>
       </div>
     </article>
   `;
@@ -47,11 +47,11 @@ function renderInviteItem(invite) {
 
 function buildUserMeta(user) {
   return [
-    user.disabled ? "已禁用" : "正常",
-    `账号 ${user.accountCount}`,
-    `Key ${user.apiKeyCount}`,
-    formatLimitValue(user.requestLimits.maxConcurrency, "并发"),
-    formatLimitValue(user.requestLimits.maxRequestsPerMinute, "/分钟")
+    user.disabled ? "Đã vô hiệu" : "Bình thường",
+    `Tài khoản ${user.accountCount}`,
+    `Khóa API ${user.apiKeyCount}`,
+    formatLimitValue(user.requestLimits.maxConcurrency, "đồng thời"),
+    formatLimitValue(user.requestLimits.maxRequestsPerMinute, "/phút")
   ].join(" · ");
 }
 
@@ -63,7 +63,7 @@ function renderUserItem(user) {
     <article class="admin-list-item admin-user-item">
       <label class="admin-select">
         <input type="checkbox" data-user-select value="${escapeHtml(user.id)}">
-        <span>选择</span>
+        <span>Chọn</span>
       </label>
       <div class="admin-list-copy">
         <strong>${escapeHtml(user.username)}</strong>
@@ -71,17 +71,17 @@ function renderUserItem(user) {
       </div>
       <form class="admin-user-form" data-user-form="${escapeHtml(user.id)}">
         <label class="input-group compact-field">
-          <span>并发</span>
-          <input type="number" min="1" step="1" data-limit-field="maxConcurrency" value="${escapeHtml(concurrencyValue)}" placeholder="不限">
+          <span>Đồng thời</span>
+          <input type="number" min="1" step="1" data-limit-field="maxConcurrency" value="${escapeHtml(concurrencyValue)}" placeholder="Không giới hạn">
         </label>
         <label class="input-group compact-field">
-          <span>速率</span>
-          <input type="number" min="1" step="1" data-limit-field="maxRequestsPerMinute" value="${escapeHtml(rateValue)}" placeholder="不限">
+          <span>Tốc độ</span>
+          <input type="number" min="1" step="1" data-limit-field="maxRequestsPerMinute" value="${escapeHtml(rateValue)}" placeholder="Không giới hạn">
         </label>
         <div class="inline-actions">
-          <button type="submit" class="button-primary" data-ripple>保存</button>
-          <button type="button" class="button-secondary" data-user-toggle-disable="${escapeHtml(user.id)}" data-disabled="${escapeHtml(String(user.disabled))}" data-ripple>${user.disabled ? "启用" : "禁用"}</button>
-          <button type="button" class="button-ghost button-danger" data-user-delete="${escapeHtml(user.id)}" data-ripple>删除</button>
+          <button type="submit" class="button-primary" data-ripple>Lưu</button>
+          <button type="button" class="button-secondary" data-user-toggle-disable="${escapeHtml(user.id)}" data-disabled="${escapeHtml(String(user.disabled))}" data-ripple>${user.disabled ? "Bật" : "Tắt"}</button>
+          <button type="button" class="button-ghost button-danger" data-user-delete="${escapeHtml(user.id)}" data-ripple>Xóa</button>
         </div>
       </form>
     </article>
@@ -91,11 +91,11 @@ function renderUserItem(user) {
 export function renderInviteList(container, invites) {
   container.innerHTML = invites.length
     ? invites.map(renderInviteItem).join("")
-    : createEmptyState("暂无邀请码", "生成后显示在这里。");
+    : createEmptyState("Chưa có mã mời", "Mã mời được tạo sẽ hiển thị ở đây.");
 }
 
 export function renderUserList(container, users) {
   container.innerHTML = users.length
     ? users.map(renderUserItem).join("")
-    : createEmptyState("暂无用户", "注册后显示在这里。");
+    : createEmptyState("Chưa có người dùng", "Người dùng đăng ký sẽ hiển thị ở đây.");
 }

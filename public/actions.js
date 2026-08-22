@@ -3,7 +3,7 @@ import { bindAdminActions } from "/admin-actions.js";
 function bindAuthActions({ els, onLogin, onRegister, setStatus }) {
   els["login-form"].onsubmit = async (event) => {
     event.preventDefault();
-    setStatus(els["login-status"], "登录中...");
+    setStatus(els["login-status"], "Đang đăng nhập...");
 
     try {
       await onLogin({
@@ -18,7 +18,7 @@ function bindAuthActions({ els, onLogin, onRegister, setStatus }) {
 
   els["register-form"].onsubmit = async (event) => {
     event.preventDefault();
-    setStatus(els["register-status"], "注册中...");
+    setStatus(els["register-status"], "Đang đăng ký...");
 
     try {
       await onRegister({
@@ -66,27 +66,59 @@ function bindWorkspaceActions({
 
   els["account-form"].onsubmit = async (event) => {
     event.preventDefault();
-    setStatus(els["account-status"], "绑定中...");
+    setStatus(els["account-status"], "Đang liên kết...");
+
+    const username = els["account-username"]?.value.trim() ?? "";
+    const password = els["account-password"]?.value ?? "";
+    const rawJson = els["account-raw-json"]?.value.trim() ?? "";
 
     try {
       await onAddAccount({
-        password: els["account-password"].value,
-        username: els["account-username"].value.trim()
+        password,
+        username,
+        rawJson
       });
-      els["account-username"].value = "";
-      setStatus(els["account-status"], "已绑定。");
+      if (els["account-username"]) els["account-username"].value = "";
+      if (els["account-password"]) els["account-password"].value = "";
+      if (els["account-raw-json"]) els["account-raw-json"].value = "";
+      setStatus(els["account-status"], "Đã liên kết.");
     } catch (error) {
       setStatus(els["account-status"], error.message);
     }
   };
 
+  const accountCard = document.getElementById("account-binding-card");
+  if (accountCard) {
+    accountCard.addEventListener("click", (event) => {
+      const modeBtn = event.target.closest("[data-import-mode]");
+      if (!modeBtn) return;
+
+      const mode = modeBtn.dataset.importMode;
+      accountCard.querySelectorAll("[data-import-mode]").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.importMode === mode);
+      });
+
+      const paneForm = document.getElementById("import-pane-form");
+      const paneJson = document.getElementById("import-pane-json");
+      if (paneForm && paneJson) {
+        if (mode === "json") {
+          paneForm.classList.add("hidden");
+          paneJson.classList.remove("hidden");
+        } else {
+          paneForm.classList.remove("hidden");
+          paneJson.classList.add("hidden");
+        }
+      }
+    });
+  }
+
   els["incognito-form"].onsubmit = async (event) => {
     event.preventDefault();
-    setStatus(els["incognito-status"], "保存中...");
+    setStatus(els["incognito-status"], "Đang lưu...");
 
     try {
       await onToggleIncognito(els["incognito-toggle"].checked);
-      setStatus(els["incognito-status"], "已保存。");
+      setStatus(els["incognito-status"], "Đã lưu.");
     } catch (error) {
       setStatus(els["incognito-status"], error.message);
     }
@@ -94,11 +126,11 @@ function bindWorkspaceActions({
 
   els["shared-mode-form"].onsubmit = async (event) => {
     event.preventDefault();
-    setStatus(els["shared-mode-status"], "保存中...");
+    setStatus(els["shared-mode-status"], "Đang lưu...");
 
     try {
       await onToggleSharedAccountMode(els["shared-mode-toggle"].checked);
-      setStatus(els["shared-mode-status"], "已保存。");
+      setStatus(els["shared-mode-status"], "Đã lưu.");
     } catch (error) {
       setStatus(els["shared-mode-status"], error.message);
     }
@@ -106,7 +138,7 @@ function bindWorkspaceActions({
 
   els["tool-parsing-form"].onsubmit = async (event) => {
     event.preventDefault();
-    setStatus(els["tool-parsing-status"], "保存中...");
+    setStatus(els["tool-parsing-status"], "Đang lưu...");
 
     try {
       await onToggleToolParsingMode(els["tool-parsing-toggle"].checked);
@@ -123,14 +155,14 @@ function bindWorkspaceActions({
     }
 
     event.preventDefault();
-    setStatus(els["account-status"], "提交验证码结果中...");
+    setStatus(els["account-status"], "Đang gửi kết quả CAPTCHA...");
 
     try {
       await onResolveCaptcha(form.dataset.captchaForm, {
         rid: form.querySelector("[data-captcha-rid]")?.value.trim() ?? "",
         coordinateText: form.querySelector("[data-captcha-coordinates]")?.value.trim() ?? ""
       });
-      setStatus(els["account-status"], "验证码状态已更新。");
+      setStatus(els["account-status"], "Đã cập nhật trạng thái CAPTCHA.");
     } catch (error) {
       setStatus(els["account-status"], error.message);
     }
@@ -144,7 +176,7 @@ function bindWorkspaceActions({
       return;
     }
 
-    setStatus(els["account-status"], retryButton ? "自动处理验证码中..." : "清理验证码状态中...");
+    setStatus(els["account-status"], retryButton ? "Đang tự động xử lý CAPTCHA..." : "Đang dọn dẹp trạng thái CAPTCHA...");
 
     try {
       if (retryButton) {
@@ -152,7 +184,7 @@ function bindWorkspaceActions({
       } else {
         await onClearCaptcha(accountId);
       }
-      setStatus(els["account-status"], "验证码状态已更新。");
+      setStatus(els["account-status"], "Đã cập nhật trạng thái CAPTCHA.");
     } catch (error) {
       setStatus(els["account-status"], error.message);
     }
@@ -162,11 +194,11 @@ function bindWorkspaceActions({
 function bindChainOfThoughtOverrideAction({ els, onToggleChainOfThoughtOverride, setStatus }) {
   els["cot-override-form"].onsubmit = async (event) => {
     event.preventDefault();
-    setStatus(els["cot-override-status"], "保存中...");
+    setStatus(els["cot-override-status"], "Đang lưu...");
 
     try {
       await onToggleChainOfThoughtOverride(els["cot-override-toggle"].checked);
-      setStatus(els["cot-override-status"], "已保存。");
+      setStatus(els["cot-override-status"], "Đã lưu.");
     } catch (error) {
       setStatus(els["cot-override-status"], error.message);
     }
@@ -289,7 +321,7 @@ function bindSystemSettingsActions({ els, onUpdateSystemSettings, setStatus }) {
 
   els["settings-form"].onsubmit = async (event) => {
     event.preventDefault();
-    setStatus(els["settings-status"], "保存中...");
+    setStatus(els["settings-status"], "Đang lưu...");
 
     try {
       await onUpdateSystemSettings({
@@ -310,7 +342,7 @@ function bindSystemSettingsActions({ els, onUpdateSystemSettings, setStatus }) {
       });
       els["settings-yescaptcha-key"].value = "";
       els["settings-clear-yescaptcha-key"].checked = false;
-      setStatus(els["settings-status"], "系统设置已保存。");
+      setStatus(els["settings-status"], "Đã lưu cài đặt hệ thống.");
     } catch (error) {
       setStatus(els["settings-status"], error.message);
     }

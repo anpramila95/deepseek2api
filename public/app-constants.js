@@ -40,7 +40,7 @@ export const INITIAL_STATE = Object.freeze({
 });
 
 export const ELEMENT_IDS = [
-  "account-form", "account-list", "account-password", "account-select", "account-status", "account-username",
+  "account-form", "account-list", "account-password", "account-raw-json", "account-select", "account-status", "account-username",
   "active-theme-label", "admin-invite-form", "admin-invite-count", "admin-invite-list",
   "admin-invite-status", "admin-register-hint", "admin-registration-form", "admin-registration-status",
   "admin-user-list", "admin-user-status", "api-key-count", "api-key-form", "api-key-label", "api-key-output",

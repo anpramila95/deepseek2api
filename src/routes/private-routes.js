@@ -15,7 +15,11 @@ import {
   listUsableAccountsForOwner,
   resolveAccountLabel
 } from "../services/account-service.js";
-import { importDeepseekAccountForOwner } from "../services/account-import-service.js";
+import {
+  importDeepseekAccountForOwner,
+  importRawDeepseekAccountForOwner
+} from "../services/account-import-service.js";
+import { maskIdentifier } from "../utils/privacy.js";
 import {
   attemptCaptchaAutoSolveForAccount,
   clearCaptchaState,
@@ -57,6 +61,27 @@ function toIncognitoPayload(session) {
 
 async function handleAccountCreation(request, response, session) {
   const body = await readJsonRequest(request);
+  const rawInput = body.rawJson || body.token || (typeof body.username === "string" && body.username.trim().startsWith("{") ? body.username : "");
+
+  if (rawInput) {
+    console.error(`[API /api/accounts] POST request received to import account via JSON/Token (owner: ${session.ownerId})`);
+
+    try {
+      const account = await importRawDeepseekAccountForOwner({
+        ownerId: session.ownerId,
+        rawInput
+      });
+      console.error(`[API /api/accounts] Account creation via JSON succeeded (account ID: ${account.id})`);
+      sendJson(response, 200, { account: toPublicAccount(account) });
+    } catch (error) {
+      console.error(`[API /api/accounts] Account creation via JSON failed:`, error.message);
+      sendError(response, error.statusCode ?? 400, error.message);
+    }
+    return true;
+  }
+
+  const maskedUser = maskIdentifier(body.username);
+  console.error(`[API /api/accounts] POST request received to bind account "${maskedUser}" (owner: ${session.ownerId})`);
 
   try {
     const account = await importDeepseekAccountForOwner({
@@ -64,8 +89,10 @@ async function handleAccountCreation(request, response, session) {
       loginValue: body.username,
       password: body.password
     });
+    console.error(`[API /api/accounts] Account creation succeeded for "${maskedUser}" (account ID: ${account.id})`);
     sendJson(response, 200, { account: toPublicAccount(account) });
   } catch (error) {
+    console.error(`[API /api/accounts] Account creation failed for "${maskedUser}":`, error.message);
     sendError(response, error.statusCode ?? 401, error.message);
   }
 

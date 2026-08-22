@@ -2,8 +2,8 @@ const DEFAULT_THEME = "starry";
 const THEME_STORAGE_KEY = "ds-console-theme";
 
 const THEMES = Object.freeze({
-  starry: Object.freeze({ key: "starry", label: "星空主题" }),
-  ocean: Object.freeze({ key: "ocean", label: "海洋主题" })
+  starry: Object.freeze({ key: "starry", label: "Giao diện Tối" }),
+  ocean: Object.freeze({ key: "ocean", label: "Giao diện Biển" })
 });
 
 function isTheme(value) {

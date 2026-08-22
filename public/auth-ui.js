@@ -34,7 +34,7 @@ export function setupAuthTabs() {
 export function applyRegistrationState(els, registration) {
   const inviteRequired = Boolean(registration?.inviteRequired);
   els["register-invite-group"].classList.toggle("hidden", !inviteRequired);
-  setText(els["admin-register-hint"], inviteRequired ? "注册需填写邀请码。" : "当前可直接注册。");
+  setText(els["admin-register-hint"], inviteRequired ? "Đăng ký cần nhập mã mời." : "Hiện tại có thể đăng ký trực tiếp.");
 }
 
 export function toggleAdminTab(els, enabled) {

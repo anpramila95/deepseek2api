@@ -10,11 +10,11 @@ function parseLimitValue(form, fieldName) {
 function bindRegistrationAction({ els, onToggleInviteRequirement, setStatus }) {
   els["admin-registration-form"].onsubmit = async (event) => {
     event.preventDefault();
-    setStatus(els["admin-registration-status"], "保存中...");
+    setStatus(els["admin-registration-status"], "Đang lưu...");
 
     try {
       await onToggleInviteRequirement(els["invite-required-toggle"].checked);
-      setStatus(els["admin-registration-status"], "已保存。");
+      setStatus(els["admin-registration-status"], "Đã lưu.");
     } catch (error) {
       setStatus(els["admin-registration-status"], error.message);
     }
@@ -24,11 +24,11 @@ function bindRegistrationAction({ els, onToggleInviteRequirement, setStatus }) {
 function bindInviteCreation({ els, onCreateInvites, setStatus }) {
   els["admin-invite-form"].onsubmit = async (event) => {
     event.preventDefault();
-    setStatus(els["admin-invite-status"], "生成中...");
+    setStatus(els["admin-invite-status"], "Đang tạo...");
 
     try {
       await onCreateInvites(els["admin-invite-count"].value);
-      setStatus(els["admin-invite-status"], "已生成。");
+      setStatus(els["admin-invite-status"], "Đã tạo.");
     } catch (error) {
       setStatus(els["admin-invite-status"], error.message);
     }
@@ -38,7 +38,7 @@ function bindInviteCreation({ els, onCreateInvites, setStatus }) {
 function bindInviteDeletion({ els, onBatchDeleteInvites, onDeleteInvite, setStatus }) {
   els["delete-selected-invites"].onclick = async () => {
     const inviteIds = collectSelectedValues(els["admin-invite-list"], "[data-invite-select]");
-    setStatus(els["admin-invite-status"], inviteIds.length ? "删除中..." : "请先选择。");
+    setStatus(els["admin-invite-status"], inviteIds.length ? "Đang xóa..." : "Vui lòng chọn trước.");
 
     if (!inviteIds.length) {
       return;
@@ -46,7 +46,7 @@ function bindInviteDeletion({ els, onBatchDeleteInvites, onDeleteInvite, setStat
 
     try {
       await onBatchDeleteInvites(inviteIds);
-      setStatus(els["admin-invite-status"], "已删除。");
+      setStatus(els["admin-invite-status"], "Đã xóa.");
     } catch (error) {
       setStatus(els["admin-invite-status"], error.message);
     }
@@ -58,10 +58,10 @@ function bindInviteDeletion({ els, onBatchDeleteInvites, onDeleteInvite, setStat
       return;
     }
 
-    setStatus(els["admin-invite-status"], "删除中...");
+    setStatus(els["admin-invite-status"], "Đang xóa...");
     try {
       await onDeleteInvite(button.dataset.inviteDelete);
-      setStatus(els["admin-invite-status"], "已删除。");
+      setStatus(els["admin-invite-status"], "Đã xóa.");
     } catch (error) {
       setStatus(els["admin-invite-status"], error.message);
     }
@@ -71,7 +71,7 @@ function bindInviteDeletion({ els, onBatchDeleteInvites, onDeleteInvite, setStat
 function bindUserBatchActions({ els, onBatchDeleteUsers, onBatchDisableUsers, setStatus }) {
   const runBatchDisable = async (disabled, pendingText, successText) => {
     const userIds = collectSelectedValues(els["admin-user-list"], "[data-user-select]");
-    setStatus(els["admin-user-status"], userIds.length ? pendingText : "请先选择。");
+    setStatus(els["admin-user-status"], userIds.length ? pendingText : "Vui lòng chọn trước.");
 
     if (!userIds.length) {
       return;
@@ -85,11 +85,11 @@ function bindUserBatchActions({ els, onBatchDeleteUsers, onBatchDisableUsers, se
     }
   };
 
-  els["disable-selected-users"].onclick = () => runBatchDisable(true, "批量禁用中...", "已禁用。");
-  els["enable-selected-users"].onclick = () => runBatchDisable(false, "批量启用中...", "已启用。");
+  els["disable-selected-users"].onclick = () => runBatchDisable(true, "Đang vô hiệu hàng loạt...", "Đã vô hiệu.");
+  els["enable-selected-users"].onclick = () => runBatchDisable(false, "Đang kích hoạt hàng loạt...", "Đã kích hoạt.");
   els["delete-selected-users"].onclick = async () => {
     const userIds = collectSelectedValues(els["admin-user-list"], "[data-user-select]");
-    setStatus(els["admin-user-status"], userIds.length ? "批量删除中..." : "请先选择。");
+    setStatus(els["admin-user-status"], userIds.length ? "Đang xóa hàng loạt..." : "Vui lòng chọn trước.");
 
     if (!userIds.length) {
       return;
@@ -97,7 +97,7 @@ function bindUserBatchActions({ els, onBatchDeleteUsers, onBatchDisableUsers, se
 
     try {
       await onBatchDeleteUsers(userIds);
-      setStatus(els["admin-user-status"], "已删除。");
+      setStatus(els["admin-user-status"], "Đã xóa.");
     } catch (error) {
       setStatus(els["admin-user-status"], error.message);
     }
@@ -112,7 +112,7 @@ function bindUserRowActions({ els, onDeleteUser, onUpdateUser, setStatus }) {
     }
 
     event.preventDefault();
-    setStatus(els["admin-user-status"], "保存中...");
+    setStatus(els["admin-user-status"], "Đang lưu...");
 
     try {
       await onUpdateUser(form.dataset.userForm, {
@@ -121,7 +121,7 @@ function bindUserRowActions({ els, onDeleteUser, onUpdateUser, setStatus }) {
           maxRequestsPerMinute: parseLimitValue(form, "maxRequestsPerMinute")
         }
       });
-      setStatus(els["admin-user-status"], "已保存。");
+      setStatus(els["admin-user-status"], "Đã lưu.");
     } catch (error) {
       setStatus(els["admin-user-status"], error.message);
     }
@@ -132,10 +132,10 @@ function bindUserRowActions({ els, onDeleteUser, onUpdateUser, setStatus }) {
     const toggleButton = event.target.closest("[data-user-toggle-disable]");
 
     if (deleteButton) {
-      setStatus(els["admin-user-status"], "删除中...");
+      setStatus(els["admin-user-status"], "Đang xóa...");
       try {
         await onDeleteUser(deleteButton.dataset.userDelete);
-        setStatus(els["admin-user-status"], "已删除。");
+        setStatus(els["admin-user-status"], "Đã xóa.");
       } catch (error) {
         setStatus(els["admin-user-status"], error.message);
       }
@@ -147,11 +147,11 @@ function bindUserRowActions({ els, onDeleteUser, onUpdateUser, setStatus }) {
     }
 
     const disabled = toggleButton.dataset.disabled === "false";
-    setStatus(els["admin-user-status"], disabled ? "禁用中..." : "启用中...");
+    setStatus(els["admin-user-status"], disabled ? "Đang vô hiệu..." : "Đang kích hoạt...");
 
     try {
       await onUpdateUser(toggleButton.dataset.userToggleDisable, { disabled });
-      setStatus(els["admin-user-status"], disabled ? "已禁用。" : "已启用。");
+      setStatus(els["admin-user-status"], disabled ? "Đã vô hiệu." : "Đã kích hoạt.");
     } catch (error) {
       setStatus(els["admin-user-status"], error.message);
     }

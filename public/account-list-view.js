@@ -2,15 +2,15 @@ import { resolveAccountDetail, resolveAccountLabel } from "/account-display.js";
 import { createEmptyState, escapeHtml } from "/utils.js";
 
 function formatOwner(ownerId) {
-  return ownerId === "admin" ? "管理员" : ownerId;
+  return ownerId === "admin" ? "Quản trị viên" : ownerId;
 }
 
 function formatDateTime(value) {
   if (!value) {
-    return "未记录";
+    return "Chưa ghi nhận";
   }
 
-  return new Intl.DateTimeFormat("zh-CN", {
+  return new Intl.DateTimeFormat("vi-VN", {
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
@@ -25,25 +25,25 @@ function renderAccountMeta(account, isAdmin) {
 }
 
 function renderStatusText(accountId, selectedAccountId) {
-  return accountId === selectedAccountId ? "当前" : "可用";
+  return accountId === selectedAccountId ? "Hiện tại" : "Khả dụng";
 }
 
 function resolveHealth(account) {
   if (account.captchaState?.triggered || account.status === "captcha_required") {
-    return { className: "danger", label: "验证码待处理" };
+    return { className: "danger", label: "Chờ xử lý CAPTCHA" };
   }
 
   if (!account.status || account.status === "online") {
     return account.settingsReported && account.dataOptimizationDisabled
-      ? { className: "ok", label: "健康" }
-      : { className: "warn", label: "设置待确认" };
+      ? { className: "ok", label: "Khỏe mạnh" }
+      : { className: "warn", label: "Chờ xác nhận cài đặt" };
   }
 
   if (account.status === "rate_limited") {
-    return { className: "warn", label: "限流" };
+    return { className: "warn", label: "Giới hạn tần suất" };
   }
 
-  return { className: "danger", label: "离线" };
+  return { className: "danger", label: "Ngoại tuyến" };
 }
 
 function renderCaptchaPanel(account) {
@@ -55,18 +55,18 @@ function renderCaptchaPanel(account) {
   return `
     <div class="captcha-panel">
       <div class="captcha-copy">
-        <strong>验证码待处理</strong>
-        <span>${escapeHtml(state.instruction || "未获取到指令，请手动完成验证后填入 rid。")}</span>
-        <span class="muted">触发时间：${escapeHtml(formatDateTime(state.triggerTime))}</span>
+        <strong>Chờ xử lý CAPTCHA</strong>
+        <span>${escapeHtml(state.instruction || "Chưa nhận được hướng dẫn, vui lòng hoàn thành xác minh thủ công rồi nhập rid.")}</span>
+        <span class="muted">Thời gian kích hoạt: ${escapeHtml(formatDateTime(state.triggerTime))}</span>
         ${state.lastError ? `<span class="captcha-error">${escapeHtml(state.lastError)}</span>` : ""}
       </div>
-      ${state.imageUrl ? `<img class="captcha-preview" src="${escapeHtml(state.imageUrl)}" alt="验证码图片">` : ""}
+      ${state.imageUrl ? `<img class="captcha-preview" src="${escapeHtml(state.imageUrl)}" alt="Hình ảnh CAPTCHA">` : ""}
       <form class="captcha-form" data-captcha-form="${escapeHtml(account.id)}">
-        <label class="input-group compact-field"><span>坐标</span><input data-captcha-coordinates placeholder="如 320,145"></label>
-        <label class="input-group compact-field"><span>rid</span><input data-captcha-rid placeholder="验证通过后的 rid"></label>
-        <button type="submit" class="button-primary" data-ripple>提交</button>
-        <button type="button" class="button-secondary" data-captcha-retry="${escapeHtml(account.id)}" data-ripple>自动重试</button>
-        <button type="button" class="button-ghost" data-captcha-clear="${escapeHtml(account.id)}" data-ripple>忽略</button>
+        <label class="input-group compact-field"><span>Tọa độ</span><input data-captcha-coordinates placeholder="Ví dụ: 320,145"></label>
+        <label class="input-group compact-field"><span>rid</span><input data-captcha-rid placeholder="rid sau khi xác minh"></label>
+        <button type="submit" class="button-primary" data-ripple>Gửi</button>
+        <button type="button" class="button-secondary" data-captcha-retry="${escapeHtml(account.id)}" data-ripple>Tự động thử lại</button>
+        <button type="button" class="button-ghost" data-captcha-clear="${escapeHtml(account.id)}" data-ripple>Bỏ qua</button>
       </form>
     </div>
   `;
@@ -80,7 +80,7 @@ function renderDeleteButton(accountId) {
       data-account-delete-id="${escapeHtml(accountId)}"
       data-ripple
     >
-      删除
+      Xóa
     </button>
   `;
 }
@@ -99,7 +99,7 @@ function renderAccountItem(account, options) {
           <strong>${escapeHtml(resolveAccountLabel(account))}</strong>
         </div>
         <span class="account-meta">${escapeHtml(meta)}</span>
-        <span class="account-meta">状态：${escapeHtml(health.label)} · 数据优化：${account.dataOptimizationDisabled ? "已关闭" : "未确认"} · Settings：${account.settingsReported ? "已上报" : "未上报"} · 更新：${escapeHtml(formatDateTime(account.updatedAt))}</span>
+        <span class="account-meta">Trạng thái: ${escapeHtml(health.label)} · Tối ưu dữ liệu: ${account.dataOptimizationDisabled ? "Đã tắt" : "Chưa xác nhận"} · Settings: ${account.settingsReported ? "Đã báo cáo" : "Chưa báo cáo"} · Cập nhật: ${escapeHtml(formatDateTime(account.updatedAt))}</span>
       </div>
       <div class="inline-actions account-actions">
         <span class="chip">${escapeHtml(renderStatusText(account.id, selectedAccountId))}</span>
@@ -125,7 +125,7 @@ function bindDeleteActions(container, accounts, onDeleteAccount) {
       const accountId = button.dataset.accountDeleteId;
       const account = resolveAccount(accounts, accountId);
       const label = resolveAccountLabel(account) || account.id;
-      if (!window.confirm(`确认删除绑定账号 "${label}" 吗？`)) {
+      if (!window.confirm(`Xác nhận xóa tài khoản liên kết "${label}"?`)) {
         return;
       }
 
@@ -147,7 +147,7 @@ export function renderAccountListView(options) {
     ? accounts
       .map((account) => renderAccountItem(account, { isAdmin, selectedAccountId }))
       .join("")
-    : createEmptyState("暂无账号", "先绑定一个账号。");
+    : createEmptyState("Chưa có tài khoản", "Vui lòng liên kết một tài khoản trước.");
 
   bindDeleteActions(container, accounts, onDeleteAccount);
 }

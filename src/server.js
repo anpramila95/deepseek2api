@@ -7,12 +7,21 @@ import { handleProxyRequest } from "./routes/proxy-routes.js";
 import { parseCookies, sendError, serveStaticFile } from "./utils/http.js";
 
 const server = createServer(async (request, response) => {
-  const url = new URL(request.url ?? "/", `http://${request.headers.host ?? "localhost"}`);
+  const url = new URL(
+    request.url ?? "/",
+    `http://${request.headers.host ?? "localhost"}`,
+  );
   request.cookies = parseCookies(request);
 
   response.setHeader("access-control-allow-origin", "*");
-  response.setHeader("access-control-allow-headers", "content-type, authorization, x-proxy-account-id");
-  response.setHeader("access-control-allow-methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
+  response.setHeader(
+    "access-control-allow-headers",
+    "content-type, authorization, x-proxy-account-id",
+  );
+  response.setHeader(
+    "access-control-allow-methods",
+    "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+  );
 
   if (request.method === "OPTIONS") {
     response.writeHead(204);
@@ -30,11 +39,20 @@ const server = createServer(async (request, response) => {
     }
 
     if (url.pathname.startsWith("/proxy/")) {
-      await handleProxyRequest(request, response, url, config.allowedProxyPaths);
+      await handleProxyRequest(
+        request,
+        response,
+        url,
+        config.allowedProxyPaths,
+      );
       return;
     }
 
-    if (url.pathname.startsWith("/v1/") || url.pathname === "/models" || url.pathname === "/models/") {
+    if (
+      url.pathname.startsWith("/v1/") ||
+      url.pathname === "/models" ||
+      url.pathname === "/models/"
+    ) {
       const handled = await handleOpenAiRequest(request, response, url);
       if (!handled) {
         sendError(response, 404, "OpenAI route not found");

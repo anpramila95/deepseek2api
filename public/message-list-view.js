@@ -8,13 +8,13 @@ const MESSAGE_TEXT_SELECTOR = "[data-section-text]";
 const ROLE_AVATARS = Object.freeze({
   ASSISTANT: "AI",
   SYSTEM: "SYS",
-  USER: "我"
+  USER: "Tôi"
 });
 
 const ROLE_LABELS = Object.freeze({
-  ASSISTANT: "助手",
-  SYSTEM: "系统",
-  USER: "用户"
+  ASSISTANT: "Trợ lý",
+  SYSTEM: "Hệ thống",
+  USER: "Người dùng"
 });
 
 function resolveRoleAvatar(role) {
@@ -114,7 +114,7 @@ export function renderMessageList(options) {
   const { container, messages } = options;
   container.innerHTML = messages.length
     ? messages.map(renderMessageMarkup).join("")
-    : createEmptyState("暂无消息", "发送一条消息开始。");
+    : createEmptyState("Chưa có tin nhắn", "Gửi một tin nhắn để bắt đầu.");
   container.scrollTop = container.scrollHeight;
 }
 

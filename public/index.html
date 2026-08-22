@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="vi">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#11130f">
-    <title>DeepSeek2API 本地网关</title>
+    <title>Cổng kết nối cục bộ DeepSeek2API</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -23,31 +23,31 @@
                 <span>Local gateway</span>
               </div>
             </div>
-            <div class="theme-switch" aria-label="主题切换">
-              <span class="panel-label">Theme</span>
+            <div class="theme-switch" aria-label="Chuyển đổi giao diện">
+              <span class="panel-label">Giao diện</span>
               <div class="segmented-control">
-                <button type="button" class="theme-option" data-theme-option="starry" data-ripple>星空</button>
-                <button type="button" class="theme-option" data-theme-option="ocean" data-ripple>海洋</button>
+                <button type="button" class="theme-option" data-theme-option="starry" data-ripple>Tối</button>
+                <button type="button" class="theme-option" data-theme-option="ocean" data-ripple>Biển</button>
               </div>
             </div>
           </header>
 
           <section class="bento-panel panel-paper login-intro" data-motion>
-            <div class="intro-route" aria-label="OpenAI 到 DeepSeek 协议桥接">
+            <div class="intro-route" aria-label="Cầu nối giao thức OpenAI sang DeepSeek">
               <span>OPENAI</span><i data-lucide="arrow-right"></i><span>DEEPSEEK</span>
             </div>
             <div>
-              <span class="panel-label">Local AI gateway</span>
+              <span class="panel-label">Cổng AI cục bộ</span>
               <h1>DeepSeek2API</h1>
-              <p>统一管理账号、会话与兼容接口。</p>
+              <p>Quản lý tập trung tài khoản, phiên làm việc và API tương thích.</p>
             </div>
           </section>
 
           <figure class="bento-panel login-visual" data-motion>
-            <img class="visual-image visual-starry" src="/images/themes/starry_sky/bg_1.png" alt="星空协议节点背景">
-            <img class="visual-image visual-ocean" src="/images/themes/ocean/bg_1.png" alt="海洋协议节点背景">
+            <img class="visual-image visual-starry" src="/images/themes/starry_sky/bg_1.png" alt="Hình nền nút giao thức Tối">
+            <img class="visual-image visual-ocean" src="/images/themes/ocean/bg_1.png" alt="Hình nền nút giao thức Biển">
             <figcaption>
-              <span>PROTOCOL RELAY</span>
+              <span>CHUYỂN TIẾP GIAO THỨC</span>
               <strong>v0</strong>
             </figcaption>
             <div class="visual-node node-a"></div>
@@ -56,35 +56,35 @@
           </figure>
 
           <section class="bento-panel panel-dark login-auth" data-motion>
-            <div class="auth-tab-bar" role="tablist" aria-label="登录与注册">
-              <button type="button" class="auth-tab-btn active" data-auth-tab="login" aria-selected="true" data-ripple>登录</button>
-              <button type="button" class="auth-tab-btn" data-auth-tab="register" aria-selected="false" data-ripple>注册</button>
+            <div class="auth-tab-bar" role="tablist" aria-label="Đăng nhập và Đăng ký">
+              <button type="button" class="auth-tab-btn active" data-auth-tab="login" aria-selected="true" data-ripple>Đăng nhập</button>
+              <button type="button" class="auth-tab-btn" data-auth-tab="register" aria-selected="false" data-ripple>Đăng ký</button>
             </div>
 
             <div id="auth-pane-login" class="auth-tab-pane">
               <div class="auth-heading">
-                <span class="panel-label">Welcome back</span>
-                <h2>进入工作区</h2>
+                <span class="panel-label">Chào mừng trở lại</span>
+                <h2>Vào không gian làm việc</h2>
               </div>
               <form id="login-form" class="auth-form">
-                <label class="input-group"><span>账号</span><input id="login-username" placeholder="输入账号" autocomplete="username"></label>
-                <label class="input-group"><span>密码</span><input id="login-password" type="password" placeholder="输入密码" autocomplete="current-password"></label>
-                <button type="submit" class="button-primary wide-command" data-ripple><span>登录</span><i data-lucide="arrow-up-right"></i></button>
+                <label class="input-group"><span>Tài khoản</span><input id="login-username" placeholder="Nhập tài khoản" autocomplete="username"></label>
+                <label class="input-group"><span>Mật khẩu</span><input id="login-password" type="password" placeholder="Nhập mật khẩu" autocomplete="current-password"></label>
+                <button type="submit" class="button-primary wide-command" data-ripple><span>Đăng nhập</span><i data-lucide="arrow-up-right"></i></button>
               </form>
               <pre id="login-status" class="status hidden"></pre>
             </div>
 
             <div id="auth-pane-register" class="auth-tab-pane hidden">
               <div class="auth-heading">
-                <span class="panel-label">New workspace</span>
-                <h2>创建本地用户</h2>
-                <p id="admin-register-hint" class="muted">当前可直接注册。</p>
+                <span class="panel-label">Không gian làm việc mới</span>
+                <h2>Tạo người dùng cục bộ</h2>
+                <p id="admin-register-hint" class="muted">Hiện tại có thể đăng ký trực tiếp.</p>
               </div>
               <form id="register-form" class="auth-form">
-                <label class="input-group"><span>账号</span><input id="register-username" placeholder="设置账号" autocomplete="username"></label>
-                <label class="input-group"><span>密码</span><input id="register-password" type="password" placeholder="设置密码" autocomplete="new-password"></label>
-                <label id="register-invite-group" class="input-group hidden"><span>邀请码</span><input id="register-invite-code" placeholder="输入邀请码"></label>
-                <button type="submit" class="button-primary wide-command" data-ripple><span>注册并进入</span><i data-lucide="arrow-up-right"></i></button>
+                <label class="input-group"><span>Tài khoản</span><input id="register-username" placeholder="Đặt tên tài khoản" autocomplete="username"></label>
+                <label class="input-group"><span>Mật khẩu</span><input id="register-password" type="password" placeholder="Đặt mật khẩu" autocomplete="new-password"></label>
+                <label id="register-invite-group" class="input-group hidden"><span>Mã mời</span><input id="register-invite-code" placeholder="Nhập mã mời"></label>
+                <button type="submit" class="button-primary wide-command" data-ripple><span>Đăng ký & Vào</span><i data-lucide="arrow-up-right"></i></button>
               </form>
               <pre id="register-status" class="status hidden"></pre>
             </div>
@@ -92,20 +92,20 @@
 
           <section class="bento-panel panel-paper login-security" data-motion>
             <div class="panel-heading-inline">
-              <span class="panel-label">Privacy default</span>
+              <span class="panel-label">Quyền riêng tư</span>
               <i data-lucide="shield-check"></i>
             </div>
-            <p>密码默认不落盘，API Key 仅保存哈希。</p>
+            <p>Mặc định mật khẩu không lưu ổ cứng, API Key chỉ lưu hash.</p>
             <div class="security-meter"><span></span><span></span><span></span><span></span></div>
           </section>
 
           <section class="bento-panel panel-accent login-capabilities" data-motion>
-            <span class="panel-label">Workspace</span>
+            <span class="panel-label">Tính năng</span>
             <ul class="capability-list">
-              <li><span>兼容接口</span><i data-lucide="arrow-up-right"></i></li>
-              <li><span>账号池</span><i data-lucide="arrow-up-right"></i></li>
-              <li><span>请求日志</span><i data-lucide="arrow-up-right"></i></li>
-              <li><span>本地用户</span><i data-lucide="arrow-up-right"></i></li>
+              <li><span>API tương thích</span><i data-lucide="arrow-up-right"></i></li>
+              <li><span>Kho tài khoản</span><i data-lucide="arrow-up-right"></i></li>
+              <li><span>Nhật ký yêu cầu</span><i data-lucide="arrow-up-right"></i></li>
+              <li><span>User cục bộ</span><i data-lucide="arrow-up-right"></i></li>
             </ul>
           </section>
 
@@ -122,39 +122,39 @@
             <div><strong>DeepSeek2API</strong><span>Console</span></div>
           </div>
 
-          <nav class="desktop-nav" aria-label="主导航">
-            <button type="button" class="nav-item active" data-tab="dashboard" aria-label="仪表盘" data-ripple><i data-lucide="layout-dashboard"></i><span>概览</span></button>
-            <button type="button" class="nav-item" data-tab="chat" aria-label="聊天" data-ripple><i data-lucide="message-square"></i><span>聊天</span></button>
-            <button type="button" class="nav-item" data-tab="accounts" aria-label="账号管理" data-ripple><i data-lucide="users"></i><span>账号</span></button>
-            <button type="button" class="nav-item" data-tab="keys" aria-label="API Key" data-ripple><i data-lucide="key-round"></i><span>密钥</span></button>
-            <button type="button" class="nav-item" data-tab="explorer" aria-label="请求日志" data-ripple><i data-lucide="scroll-text"></i><span>日志</span></button>
-            <button type="button" class="nav-item hidden" data-tab="settings" data-admin-only="true" aria-label="系统设置" data-ripple><i data-lucide="settings-2"></i><span>设置</span></button>
-            <button type="button" class="nav-item hidden" data-tab="admin" data-admin-only="true" aria-label="用户管理" data-ripple><i data-lucide="user-cog"></i><span>用户</span></button>
+          <nav class="desktop-nav" aria-label="Điều hướng chính">
+            <button type="button" class="nav-item active" data-tab="dashboard" aria-label="Tổng quan" data-ripple><i data-lucide="layout-dashboard"></i><span>Tổng quan</span></button>
+            <button type="button" class="nav-item" data-tab="chat" aria-label="Trò chuyện" data-ripple><i data-lucide="message-square"></i><span>Trò chuyện</span></button>
+            <button type="button" class="nav-item" data-tab="accounts" aria-label="Quản lý tài khoản" data-ripple><i data-lucide="users"></i><span>Tài khoản</span></button>
+            <button type="button" class="nav-item" data-tab="keys" aria-label="API Key" data-ripple><i data-lucide="key-round"></i><span>Khóa API</span></button>
+            <button type="button" class="nav-item" data-tab="explorer" aria-label="Nhật ký yêu cầu" data-ripple><i data-lucide="scroll-text"></i><span>Nhật ký</span></button>
+            <button type="button" class="nav-item hidden" data-tab="settings" data-admin-only="true" aria-label="Cài đặt hệ thống" data-ripple><i data-lucide="settings-2"></i><span>Cài đặt</span></button>
+            <button type="button" class="nav-item hidden" data-tab="admin" data-admin-only="true" aria-label="Quản lý người dùng" data-ripple><i data-lucide="user-cog"></i><span>Người dùng</span></button>
           </nav>
 
           <div class="workspace-actions">
-            <div class="theme-switch compact-theme" aria-label="主题切换">
-              <button type="button" class="theme-option" data-theme-option="starry" title="星空主题" aria-label="星空主题"><i data-lucide="moon-star"></i></button>
-              <button type="button" class="theme-option" data-theme-option="ocean" title="海洋主题" aria-label="海洋主题"><i data-lucide="waves"></i></button>
+            <div class="theme-switch compact-theme" aria-label="Chuyển đổi giao diện">
+              <button type="button" class="theme-option" data-theme-option="starry" title="Giao diện Tối" aria-label="Giao diện Tối"><i data-lucide="moon-star"></i></button>
+              <button type="button" class="theme-option" data-theme-option="ocean" title="Giao diện Biển" aria-label="Giao diện Biển"><i data-lucide="waves"></i></button>
             </div>
-            <div class="identity-copy"><span id="role-label">未登录</span><strong id="user-summary"></strong></div>
-            <button id="logout-button" type="button" class="icon-button" title="退出登录" aria-label="退出登录" data-ripple><i data-lucide="log-out"></i></button>
+            <div class="identity-copy"><span id="role-label">Chưa đăng nhập</span><strong id="user-summary"></strong></div>
+            <button id="logout-button" type="button" class="icon-button" title="Đăng xuất" aria-label="Đăng xuất" data-ripple><i data-lucide="log-out"></i></button>
           </div>
         </header>
 
         <div class="workspace-grid">
           <aside class="bento-panel panel-dark sidebar" data-motion>
             <div class="sidebar-heading">
-              <div><span class="panel-label">Sessions</span><h2>会话</h2></div>
+              <div><span class="panel-label">Sessions</span><h2>Phiên</h2></div>
               <div class="inline-actions">
                 <span id="session-count" class="metric-pill">0</span>
-                <button id="refresh-sessions" type="button" class="icon-button inverse" title="刷新会话" aria-label="刷新会话" data-ripple><i data-lucide="refresh-cw"></i></button>
+                <button id="refresh-sessions" type="button" class="icon-button inverse" title="Làm mới phiên" aria-label="Làm mới phiên" data-ripple><i data-lucide="refresh-cw"></i></button>
               </div>
             </div>
-            <p id="session-caption" class="muted section-copy">按更新时间显示</p>
+            <p id="session-caption" class="muted section-copy">Hiển thị theo thời gian cập nhật</p>
             <div id="sessions" class="session-list stack"></div>
             <div class="sidebar-footer">
-              <label class="input-group"><span>当前账号</span><select id="account-select"></select></label>
+              <label class="input-group"><span>Tài khoản hiện tại</span><select id="account-select"></select></label>
             </div>
           </aside>
 
@@ -162,22 +162,22 @@
             <header class="bento-panel panel-accent page-header" data-motion>
               <div class="page-heading">
                 <span class="panel-label">Workspace</span>
-                <h1 id="page-title">仪表盘首页</h1>
+                <h1 id="page-title">Trang tổng quan</h1>
               </div>
               <div class="page-header-meta">
                 <div class="status-line">
-                  <span>无痕 <strong id="incognito-summary">关闭</strong></span>
-                  <span>共享 <strong id="shared-mode-summary">关闭</strong></span>
-                  <span>主题 <strong id="active-theme-label">星空</strong></span>
+                  <span>Ẩn danh <strong id="incognito-summary">Tắt</strong></span>
+                  <span>Chia sẻ <strong id="shared-mode-summary">Tắt</strong></span>
+                  <span>Giao diện <strong id="active-theme-label">Tối</strong></span>
                 </div>
                 <div class="metric-line">
-                  <span>会话 <strong id="metric-session-count">0</strong></span>
-                  <span>消息 <strong id="message-count">0</strong></span>
-                  <span>密钥 <strong id="api-key-count">0</strong></span>
-                  <span>端点 <strong id="endpoint-count">0</strong></span>
+                  <span>Phiên <strong id="metric-session-count">0</strong></span>
+                  <span>Tin nhắn <strong id="message-count">0</strong></span>
+                  <span>Khóa API <strong id="api-key-count">0</strong></span>
+                  <span>Endpoint <strong id="endpoint-count">0</strong></span>
                 </div>
               </div>
-              <button id="new-session" type="button" class="button-dark" data-ripple><i data-lucide="plus"></i><span>新建会话</span></button>
+              <button id="new-session" type="button" class="button-dark" data-ripple><i data-lucide="plus"></i><span>Tạo phiên mới</span></button>
             </header>
 
             <pre id="app-status" class="status status-banner hidden"></pre>
@@ -185,48 +185,48 @@
             <section class="page-content">
               <section id="tab-dashboard" class="tab-pane dashboard-home" data-motion>
                 <div class="section-title-bar bento-panel panel-paper">
-                  <div><span class="panel-label">Overview</span><h2>运行概览</h2></div>
-                  <button type="button" class="icon-button" data-tab="chat" title="进入聊天" aria-label="进入聊天" data-ripple><i data-lucide="arrow-up-right"></i></button>
+                  <div><span class="panel-label">Overview</span><h2>Tổng quan vận hành</h2></div>
+                  <button type="button" class="icon-button" data-tab="chat" title="Vào trò chuyện" aria-label="Vào trò chuyện" data-ripple><i data-lucide="arrow-up-right"></i></button>
                 </div>
                 <div id="dashboard-health-cards" class="dashboard-card-grid"></div>
                 <div class="dashboard-overview-grid">
                   <article class="bento-panel panel-paper settings-card trend-panel">
-                    <div class="section-heading"><div><span class="panel-label">Trend</span><h3>请求趋势</h3></div></div>
+                    <div class="section-heading"><div><span class="panel-label">Trend</span><h3>Xu hướng yêu cầu</h3></div></div>
                     <div id="dashboard-request-chart" class="dashboard-chart"></div>
                   </article>
                   <article class="bento-panel panel-dark settings-card verification-panel">
-                    <div class="section-heading"><div><span class="panel-label">Verification</span><h3>验证状态</h3></div></div>
+                    <div class="section-heading"><div><span class="panel-label">Verification</span><h3>Trạng thái xác thực</h3></div></div>
                     <div id="captcha-alert-list" class="alert-list"></div>
                   </article>
                 </div>
                 <article class="bento-panel panel-paper settings-card recent-panel">
-                  <div class="section-heading"><div><span class="panel-label">Recent</span><h3>最近请求</h3></div></div>
+                  <div class="section-heading"><div><span class="panel-label">Recent</span><h3>Yêu cầu gần đây</h3></div></div>
                   <div id="dashboard-recent-logs" class="request-log-list compact"></div>
                 </article>
               </section>
 
               <section id="tab-chat" class="tab-pane chat-section hidden" data-motion>
                 <div class="bento-panel panel-paper chat-toolbar">
-                  <label class="input-group compact-field"><span>模型</span><select id="model-select">
-                    <option value="deepseek-chat">快速模式</option>
-                    <option value="deepseek-chat-search">快速 + 搜索</option>
-                    <option value="deepseek-reasoner">深度思考</option>
-                    <option value="deepseek-reasoner-search">思考 + 搜索</option>
-                    <option value="deepseek-chat-expert">专家模式</option>
-                    <option value="deepseek-reasoner-expert">专家 + 思考</option>
-                    <option value="deepseek-vision">识图模式</option>
-                    <option value="deepseek-vision-reasoner">识图 + 思考</option>
+                  <label class="input-group compact-field"><span>Mô hình</span><select id="model-select">
+                    <option value="deepseek-chat">Chế độ nhanh</option>
+                    <option value="deepseek-chat-search">Nhanh + Tìm kiếm</option>
+                    <option value="deepseek-reasoner">Suy nghĩ sâu</option>
+                    <option value="deepseek-reasoner-search">Suy nghĩ + Tìm kiếm</option>
+                    <option value="deepseek-chat-expert">Chế độ chuyên gia</option>
+                    <option value="deepseek-reasoner-expert">Chuyên gia + Suy nghĩ</option>
+                    <option value="deepseek-vision">Chế độ nhận diện ảnh</option>
+                    <option value="deepseek-vision-reasoner">Nhận diện ảnh + Suy nghĩ</option>
                   </select></label>
-                  <label class="input-group compact-field"><span>输出</span><select id="response-mode"><option value="stream">流式</option><option value="non-stream">非流式</option></select></label>
+                  <label class="input-group compact-field"><span>Đầu ra</span><select id="response-mode"><option value="stream">Stream</option><option value="non-stream">Non-stream</option></select></label>
                 </div>
                 <div id="messages" class="bento-panel panel-paper messages"></div>
                 <div class="bento-panel panel-dark composer">
-                  <label class="input-group"><span>内容</span><textarea id="prompt-input" rows="5" placeholder="输入内容"></textarea></label>
+                  <label class="input-group"><span>Nội dung</span><textarea id="prompt-input" rows="5" placeholder="Nhập nội dung..."></textarea></label>
                   <div id="draft-files" class="draft-files"></div>
                   <input id="file-input" type="file" class="hidden" multiple>
                   <div class="composer-actions">
-                    <button id="attach-files" type="button" class="icon-button inverse" title="上传文件" aria-label="上传文件" data-ripple><i data-lucide="paperclip"></i></button>
-                    <button id="send-button" type="button" class="button-primary send-button" data-ripple><span>发送</span><i data-lucide="send"></i></button>
+                    <button id="attach-files" type="button" class="icon-button inverse" title="Tải tệp lên" aria-label="Tải tệp lên" data-ripple><i data-lucide="paperclip"></i></button>
+                    <button id="send-button" type="button" class="button-primary send-button" data-ripple><span>Gửi</span><i data-lucide="send"></i></button>
                   </div>
                 </div>
                 <pre id="chat-status" class="status hidden"></pre>
@@ -235,48 +235,60 @@
               <section id="tab-accounts" class="tab-pane hidden" data-motion>
                 <div class="settings-grid accounts-grid">
                   <article id="account-binding-card" class="bento-panel panel-paper settings-card">
-                    <div class="section-heading"><div><span class="panel-label">Accounts</span><h3>绑定 DeepSeek 账号</h3></div></div>
-                    <form id="account-form" class="form-grid">
-                      <label class="input-group"><span>账号</span><input id="account-username" placeholder="手机号 / 邮箱" autocomplete="username"></label>
-                      <label class="input-group"><span>密码</span><input id="account-password" type="password" placeholder="输入密码" autocomplete="current-password"></label>
-                      <button type="submit" class="button-primary" data-ripple><span>绑定</span><i data-lucide="link"></i></button>
+                    <div class="section-heading">
+                      <div><span class="panel-label">Accounts</span><h3>Liên kết tài khoản DeepSeek</h3></div>
+                      <div class="segmented-control mode-switch">
+                        <button type="button" class="auth-tab-btn active" data-import-mode="form" data-ripple>Tài khoản</button>
+                        <button type="button" class="auth-tab-btn" data-import-mode="json" data-ripple>Dán JSON / Token</button>
+                      </div>
+                    </div>
+                    <form id="account-form" class="form-grid-wrap">
+                      <div id="import-pane-form" class="form-grid">
+                        <label class="input-group"><span>Tài khoản</span><input id="account-username" placeholder="Số điện thoại / Email" autocomplete="username"></label>
+                        <label class="input-group"><span>Mật khẩu</span><input id="account-password" type="password" placeholder="Nhập mật khẩu" autocomplete="current-password"></label>
+                        <button type="submit" class="button-primary" data-ripple><span>Liên kết</span><i data-lucide="link"></i></button>
+                      </div>
+                      <div id="import-pane-json" class="form-grid-json hidden">
+                        <label class="input-group wide-field"><span>Dữ liệu JSON hoặc Bearer Token</span><textarea id="account-raw-json" rows="2" placeholder='Dán chuỗi Token hoặc JSON tài khoản (Ví dụ: {"token": "..."} hoặc eyJhbGci...)'></textarea></label>
+                        <button type="submit" class="button-primary" data-ripple><span>Liên kết</span><i data-lucide="link"></i></button>
+                      </div>
                     </form>
                     <pre id="account-status" class="status hidden"></pre>
                     <div id="account-list" class="account-list stack"></div>
                   </article>
                   <article id="incognito-card" class="bento-panel panel-dark settings-card">
-                    <div class="section-heading"><div><span class="panel-label">Incognito</span><h3>无痕模式</h3></div></div>
+                    <div class="section-heading"><div><span class="panel-label">Incognito</span><h3>Chế độ ẩn danh</h3></div></div>
                     <p id="incognito-description" class="muted section-copy"></p>
                     <form id="incognito-form" class="settings-form">
-                      <label class="toggle-chip settings-toggle"><input id="incognito-toggle" type="checkbox"><span id="incognito-label">仅自己开启</span></label>
-                      <button type="submit" class="button-primary" data-ripple>保存</button>
+                      <label class="toggle-chip settings-toggle"><input id="incognito-toggle" type="checkbox"><span id="incognito-label">Chỉ bật cho cá nhân</span></label>
+                      <button type="submit" class="button-primary" data-ripple>Lưu</button>
                     </form>
                     <pre id="incognito-status" class="status hidden"></pre>
                     <div id="shared-mode-panel" class="shared-mode-panel hidden">
-                      <div class="section-heading"><div><span class="panel-label">Shared</span><h3>大锅饭</h3></div></div>
+                      <div class="section-heading"><div><span class="panel-label">Shared</span><h3>Dùng chung tài khoản</h3></div></div>
                       <p id="shared-mode-description" class="muted section-copy"></p>
                       <form id="shared-mode-form" class="settings-form">
-                        <label class="toggle-chip settings-toggle"><input id="shared-mode-toggle" type="checkbox"><span id="shared-mode-label">全局共享账户</span></label>
-                        <button type="submit" class="button-primary" data-ripple>保存</button>
+                        <label class="toggle-chip settings-toggle"><input id="shared-mode-toggle" type="checkbox"><span id="shared-mode-label">Chia sẻ tài khoản toàn cục</span></label>
+                        <button type="submit" class="button-primary" data-ripple>Lưu</button>
                       </form>
                       <pre id="shared-mode-status" class="status hidden"></pre>
                     </div>
                   </article>
                   <article id="cot-override-card" class="bento-panel panel-accent settings-card">
-                    <div class="section-heading"><div><span class="panel-label">Experimental</span><h3>思维链覆写模式（实验性）</h3></div></div>
+                    <div class="section-heading"><div><span class="panel-label">Experimental</span><h3>Ghi đè chuỗi suy nghĩ (Thử nghiệm)</h3></div></div>
                     <p id="cot-override-description" class="muted section-copy"></p>
                     <form id="cot-override-form" class="settings-form">
-                      <label class="toggle-chip settings-toggle"><input id="cot-override-toggle" type="checkbox"><span id="cot-override-label">仅自己开启（实验性）</span></label>
-                      <button type="submit" class="button-dark" data-ripple>保存</button>
+                      <label class="toggle-chip settings-toggle"><input id="cot-override-toggle" type="checkbox"><span id="cot-override-label">Chỉ bật cho cá nhân (Thử nghiệm)</span></label>
+                      <button type="submit" class="button-dark" data-ripple>Lưu</button>
                     </form>
                     <pre id="cot-override-status" class="status hidden"></pre>
                   </article>
                   <article id="tool-parsing-card" class="bento-panel panel-paper settings-card">
-                    <div class="section-heading"><div><span class="panel-label">Tool Parser</span><h3>工具解析模式</h3></div></div>
+                    <div class="section-heading"><div><span class="panel-label">Tool Parser</span><h3>Chế độ phân tích công cụ</h3></div></div>
                     <p id="tool-parsing-description" class="muted section-copy"></p>
                     <form id="tool-parsing-form" class="settings-form">
-                      <label class="toggle-chip settings-toggle"><input id="tool-parsing-toggle" type="checkbox"><span id="tool-parsing-label">仅自己开启</span></label>
-                      <button type="submit" class="button-primary" data-ripple>保存</button>
+                      <label class="toggle-chip settings-toggle"><input id="tool-parsing-toggle" type="checkbox"><span id="tool-parsing-label">Chỉ bật cho cá nhân</span></label>
+                      <button type="submit" class="button-primary" data-ripple>Lưu</button>
                     </form>
                     <pre id="tool-parsing-status" class="status hidden"></pre>
                   </article>
@@ -284,12 +296,12 @@
               </section>
 
               <section id="tab-keys" class="tab-pane hidden" data-motion>
-                <div class="section-title-bar bento-panel panel-paper"><div><span class="panel-label">Credentials</span><h2>API Key</h2></div></div>
+                <div class="section-title-bar bento-panel panel-paper"><div><span class="panel-label">Credentials</span><h2>Khóa API</h2></div></div>
                 <form id="api-key-form" class="bento-panel panel-accent form-grid api-key-create-form">
-                  <label class="input-group"><span>标签</span><input id="api-key-label" placeholder="例如：主账号"></label>
-                  <label class="input-group"><span>自定义 Key</span><input id="api-key-plain" placeholder="可留空"></label>
-                  <label class="toggle-chip settings-toggle"><input id="api-key-tool-calls" type="checkbox"><span>工具调用</span></label>
-                  <button type="submit" class="button-dark" data-ripple><span>创建</span><i data-lucide="plus"></i></button>
+                  <label class="input-group"><span>Nhãn</span><input id="api-key-label" placeholder="Ví dụ: Tài khoản chính"></label>
+                  <label class="input-group"><span>Khóa tùy chỉnh</span><input id="api-key-plain" placeholder="Có thể để trống"></label>
+                  <label class="toggle-chip settings-toggle"><input id="api-key-tool-calls" type="checkbox"><span>Gọi công cụ</span></label>
+                  <button type="submit" class="button-dark" data-ripple><span>Tạo</span><i data-lucide="plus"></i></button>
                 </form>
                 <pre id="api-key-output" class="status hidden"></pre>
                 <div id="api-keys" class="key-list stack"></div>
@@ -297,18 +309,18 @@
 
               <section id="tab-explorer" class="tab-pane hidden" data-motion>
                 <div class="section-title-bar bento-panel panel-paper">
-                  <div><span class="panel-label">Requests</span><h2>请求日志</h2></div>
-                  <button id="refresh-request-logs" type="button" class="icon-button" title="刷新日志" aria-label="刷新日志" data-ripple><i data-lucide="refresh-cw"></i></button>
+                  <div><span class="panel-label">Requests</span><h2>Nhật ký yêu cầu</h2></div>
+                  <button id="refresh-request-logs" type="button" class="icon-button" title="Làm mới nhật ký" aria-label="Làm mới nhật ký" data-ripple><i data-lucide="refresh-cw"></i></button>
                 </div>
                 <div id="request-log-list" class="bento-panel panel-paper request-log-list"></div>
                 <form id="explorer-form" class="bento-panel panel-dark explorer-form">
                   <div class="explorer-grid">
-                    <label class="input-group"><span>路径</span><select id="explorer-path"></select></label>
-                    <label class="input-group"><span>方法</span><select id="explorer-method"><option value="GET">GET</option><option value="POST">POST</option></select></label>
+                    <label class="input-group"><span>Đường dẫn</span><select id="explorer-path"></select></label>
+                    <label class="input-group"><span>Phương thức</span><select id="explorer-method"><option value="GET">GET</option><option value="POST">POST</option></select></label>
                   </div>
-                  <label class="input-group"><span>查询参数</span><textarea id="explorer-query" rows="3" placeholder='{"chat_session_id":"..."}'></textarea></label>
-                  <label class="input-group"><span>请求体</span><textarea id="explorer-body" rows="7" placeholder='{"message":"hello"}'></textarea></label>
-                  <div class="form-actions"><button type="submit" class="button-primary" data-ripple><span>执行</span><i data-lucide="play"></i></button></div>
+                  <label class="input-group"><span>Tham số truy vấn</span><textarea id="explorer-query" rows="3" placeholder='{"chat_session_id":"..."}'></textarea></label>
+                  <label class="input-group"><span>Nội dung yêu cầu (Body)</span><textarea id="explorer-body" rows="7" placeholder='{"message":"hello"}'></textarea></label>
+                  <div class="form-actions"><button type="submit" class="button-primary" data-ripple><span>Thực thi</span><i data-lucide="play"></i></button></div>
                 </form>
                 <pre id="explorer-output" class="status status-large hidden"></pre>
               </section>
@@ -316,33 +328,33 @@
               <section id="tab-settings" class="tab-pane hidden" data-admin-only="true" data-motion>
                 <div class="settings-panel-grid">
                   <article class="bento-panel panel-paper settings-card">
-                    <div class="section-heading"><div><span class="panel-label">Basic</span><h3>基础</h3></div></div>
-                    <div class="settings-kv"><span>服务地址</span><strong id="settings-origin"></strong><span>兼容层</span><strong>OpenAI Chat Completions</strong><span>前端</span><strong>Vanilla ES Modules</strong></div>
+                    <div class="section-heading"><div><span class="panel-label">Basic</span><h3>Cơ bản</h3></div></div>
+                    <div class="settings-kv"><span>Địa chỉ máy chủ</span><strong id="settings-origin"></strong><span>Lớp tương thích</span><strong>OpenAI Chat Completions</strong><span>Giao diện</span><strong>Vanilla ES Modules</strong></div>
                   </article>
                   <article class="bento-panel panel-accent settings-card">
-                    <div class="section-heading"><div><span class="panel-label">Registration</span><h3>注册策略</h3></div></div>
-                    <div class="settings-kv"><span>邀请码</span><strong id="settings-registration-summary">关闭</strong></div>
+                    <div class="section-heading"><div><span class="panel-label">Registration</span><h3>Chính sách đăng ký</h3></div></div>
+                    <div class="settings-kv"><span>Mã mời</span><strong id="settings-registration-summary">Tắt</strong></div>
                   </article>
                   <article class="bento-panel panel-dark settings-card settings-risk-card">
-                    <div class="section-heading"><div><span class="panel-label">Verification</span><h3>验证码恢复</h3></div></div>
+                    <div class="section-heading"><div><span class="panel-label">Verification</span><h3>Khôi phục CAPTCHA</h3></div></div>
                     <form id="settings-form" class="settings-form vertical-form">
                       <label class="input-group"><span>YesCaptcha Endpoint</span><input id="settings-endpoint" placeholder="https://api.yescaptcha.com"></label>
                       <label class="input-group"><span>YesCaptcha Key</span><input id="settings-yescaptcha-key" type="password" autocomplete="off"></label>
-                      <label class="toggle-chip settings-toggle"><input id="settings-clear-yescaptcha-key" type="checkbox"><span>清空已配置 Key</span></label>
-                      <label class="toggle-chip settings-toggle"><input id="settings-auto-solve" type="checkbox"><span>自动处理验证码</span></label>
-                      <label class="toggle-chip settings-toggle"><input id="settings-vision-fallback" type="checkbox"><span>DeepSeek Vision 降级</span></label>
-                      <label class="toggle-chip settings-toggle"><input id="settings-cot-override" type="checkbox"><span>思维链覆写模式（实验性，全局）</span></label>
-                      <label class="toggle-chip settings-toggle"><input id="settings-tool-parsing-mode" type="checkbox"><span>工具解析模式（全局）</span></label>
-                      <label class="input-group"><span>输入分段字符数</span><input id="settings-input-content-limit" type="number" min="1" max="10000000" step="1000"></label>
-                      <label class="input-group"><span>Vision 备用账号</span><select id="settings-vision-account"></select></label>
-                      <div class="form-grid two-cols"><label class="input-group"><span>最大重试</span><input id="settings-max-retries" type="number" min="1" max="20"></label><label class="input-group"><span>冷却毫秒</span><input id="settings-cooldown-ms" type="number" min="0" step="1000"></label></div>
-                      <div class="form-actions"><button type="submit" class="button-primary" data-ripple>保存设置</button></div>
+                      <label class="toggle-chip settings-toggle"><input id="settings-clear-yescaptcha-key" type="checkbox"><span>Xóa Key đã cấu hình</span></label>
+                      <label class="toggle-chip settings-toggle"><input id="settings-auto-solve" type="checkbox"><span>Tự động giải CAPTCHA</span></label>
+                      <label class="toggle-chip settings-toggle"><input id="settings-vision-fallback" type="checkbox"><span>Hạ cấp DeepSeek Vision</span></label>
+                      <label class="toggle-chip settings-toggle"><input id="settings-cot-override" type="checkbox"><span>Ghi đè chuỗi suy nghĩ (Thử nghiệm, toàn cục)</span></label>
+                      <label class="toggle-chip settings-toggle"><input id="settings-tool-parsing-mode" type="checkbox"><span>Chế độ phân tích công cụ (Toàn cục)</span></label>
+                      <label class="input-group"><span>Giới hạn ký tự phân đoạn đầu vào</span><input id="settings-input-content-limit" type="number" min="1" max="10000000" step="1000"></label>
+                      <label class="input-group"><span>Tài khoản dự phòng Vision</span><select id="settings-vision-account"></select></label>
+                      <div class="form-grid two-cols"><label class="input-group"><span>Thử lại tối đa</span><input id="settings-max-retries" type="number" min="1" max="20"></label><label class="input-group"><span>Thời gian chờ (ms)</span><input id="settings-cooldown-ms" type="number" min="0" step="1000"></label></div>
+                      <div class="form-actions"><button type="submit" class="button-primary" data-ripple>Lưu cài đặt</button></div>
                     </form>
                     <pre id="settings-status" class="status hidden"></pre>
                   </article>
                   <article class="bento-panel panel-paper settings-card">
                     <div class="section-heading"><div><span class="panel-label">About</span><h3>DeepSeek2API</h3></div></div>
-                    <p class="muted section-copy">本地账号池与 OpenAI 兼容网关。</p>
+                    <p class="muted section-copy">Kho tài khoản cục bộ và cổng tương thích OpenAI.</p>
                   </article>
                 </div>
               </section>
@@ -350,21 +362,21 @@
               <section id="tab-admin" class="tab-pane hidden" data-motion>
                 <div class="settings-grid admin-grid">
                   <article id="admin-registration-card" class="bento-panel panel-accent settings-card">
-                    <div class="section-heading"><div><span class="panel-label">Registration</span><h3>注册开关</h3></div></div>
-                    <form id="admin-registration-form" class="settings-form"><label class="toggle-chip settings-toggle"><input id="invite-required-toggle" type="checkbox"><span>启用邀请码</span></label><button type="submit" class="button-dark" data-ripple>保存</button></form>
+                    <div class="section-heading"><div><span class="panel-label">Registration</span><h3>Bật/Tắt đăng ký</h3></div></div>
+                    <form id="admin-registration-form" class="settings-form"><label class="toggle-chip settings-toggle"><input id="invite-required-toggle" type="checkbox"><span>Bật mã mời</span></label><button type="submit" class="button-dark" data-ripple>Lưu</button></form>
                     <pre id="admin-registration-status" class="status hidden"></pre>
                   </article>
                   <article id="admin-invite-card" class="bento-panel panel-paper settings-card">
-                    <div class="section-heading"><div><span class="panel-label">Invites</span><h3>邀请码</h3></div></div>
-                    <form id="admin-invite-form" class="form-grid"><label class="input-group"><span>数量</span><input id="admin-invite-count" type="number" min="1" step="1" value="1"></label><button type="submit" class="button-primary" data-ripple>生成</button></form>
-                    <div class="inline-actions"><button id="delete-selected-invites" type="button" class="button-ghost button-danger" data-ripple>批量删除</button></div>
+                    <div class="section-heading"><div><span class="panel-label">Invites</span><h3>Mã mời</h3></div></div>
+                    <form id="admin-invite-form" class="form-grid"><label class="input-group"><span>Số lượng</span><input id="admin-invite-count" type="number" min="1" step="1" value="1"></label><button type="submit" class="button-primary" data-ripple>Tạo</button></form>
+                    <div class="inline-actions"><button id="delete-selected-invites" type="button" class="button-ghost button-danger" data-ripple>Xóa hàng loạt</button></div>
                     <pre id="admin-invite-status" class="status hidden"></pre>
                     <div id="admin-invite-list" class="stack"></div>
                   </article>
                 </div>
                 <article id="admin-user-card" class="bento-panel panel-dark settings-card">
-                  <div class="section-heading"><div><span class="panel-label">Users</span><h3>用户</h3></div></div>
-                  <div class="inline-actions"><button id="disable-selected-users" type="button" class="button-secondary" data-ripple>批量禁用</button><button id="enable-selected-users" type="button" class="button-secondary" data-ripple>批量启用</button><button id="delete-selected-users" type="button" class="button-ghost button-danger" data-ripple>批量删除</button></div>
+                  <div class="section-heading"><div><span class="panel-label">Users</span><h3>Người dùng</h3></div></div>
+                  <div class="inline-actions"><button id="disable-selected-users" type="button" class="button-secondary" data-ripple>Vô hiệu hàng loạt</button><button id="enable-selected-users" type="button" class="button-secondary" data-ripple>Kích hoạt hàng loạt</button><button id="delete-selected-users" type="button" class="button-ghost button-danger" data-ripple>Xóa hàng loạt</button></div>
                   <pre id="admin-user-status" class="status hidden"></pre>
                   <div id="admin-user-list" class="stack"></div>
                 </article>
@@ -373,14 +385,14 @@
           </main>
         </div>
 
-        <nav class="bottom-tab-bar bento-panel panel-paper" aria-label="移动导航">
-          <button type="button" class="bottom-tab-item active" data-tab="dashboard" aria-label="仪表盘" data-ripple><i data-lucide="layout-dashboard"></i><span>概览</span></button>
-          <button type="button" class="bottom-tab-item" data-tab="chat" aria-label="聊天" data-ripple><i data-lucide="message-square"></i><span>聊天</span></button>
-          <button type="button" class="bottom-tab-item" data-tab="accounts" aria-label="账号管理" data-ripple><i data-lucide="users"></i><span>账号</span></button>
-          <button type="button" class="bottom-tab-item" data-tab="keys" aria-label="API Key" data-ripple><i data-lucide="key-round"></i><span>密钥</span></button>
-          <button type="button" class="bottom-tab-item" data-tab="explorer" aria-label="请求日志" data-ripple><i data-lucide="scroll-text"></i><span>日志</span></button>
-          <button type="button" class="bottom-tab-item hidden" data-tab="settings" data-admin-only="true" aria-label="系统设置" data-ripple><i data-lucide="settings-2"></i><span>设置</span></button>
-          <button type="button" class="bottom-tab-item hidden" data-tab="admin" data-admin-only="true" aria-label="用户管理" data-ripple><i data-lucide="user-cog"></i><span>用户</span></button>
+        <nav class="bottom-tab-bar bento-panel panel-paper" aria-label="Điều hướng di động">
+          <button type="button" class="bottom-tab-item active" data-tab="dashboard" aria-label="Tổng quan" data-ripple><i data-lucide="layout-dashboard"></i><span>Tổng quan</span></button>
+          <button type="button" class="bottom-tab-item" data-tab="chat" aria-label="Trò chuyện" data-ripple><i data-lucide="message-square"></i><span>Trò chuyện</span></button>
+          <button type="button" class="bottom-tab-item" data-tab="accounts" aria-label="Quản lý tài khoản" data-ripple><i data-lucide="users"></i><span>Tài khoản</span></button>
+          <button type="button" class="bottom-tab-item" data-tab="keys" aria-label="API Key" data-ripple><i data-lucide="key-round"></i><span>Khóa API</span></button>
+          <button type="button" class="bottom-tab-item" data-tab="explorer" aria-label="Nhật ký yêu cầu" data-ripple><i data-lucide="scroll-text"></i><span>Nhật ký</span></button>
+          <button type="button" class="bottom-tab-item hidden" data-tab="settings" data-admin-only="true" aria-label="Cài đặt hệ thống" data-ripple><i data-lucide="settings-2"></i><span>Cài đặt</span></button>
+          <button type="button" class="bottom-tab-item hidden" data-tab="admin" data-admin-only="true" aria-label="Quản lý người dùng" data-ripple><i data-lucide="user-cog"></i><span>Người dùng</span></button>
         </nav>
       </section>
     </div>

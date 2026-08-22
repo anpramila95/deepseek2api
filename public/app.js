@@ -120,7 +120,7 @@ view = createView({
   themeController
 });
 workspace = createSessionWorkspace({
-  accountRequiredMessage: "请先选择可用账号。",
+  accountRequiredMessage: "Vui lòng chọn tài khoản khả dụng trước.",
   appStatusElement: els["app-status"],
   getState: () => state,
   isIncognitoEnabled,
@@ -257,11 +257,11 @@ async function bootstrap() {
 
 async function uploadFiles(files) {
   if (!state.selectedAccountId) {
-    throw new Error("请先选择可用账号。");
+    throw new Error("Vui lòng chọn tài khoản khả dụng trước.");
   }
 
   if (!selectedModelSupportsUploads()) {
-    throw new Error("专家模式不支持上传文件。");
+    throw new Error("Chế độ chuyên gia không hỗ trợ tải tệp lên.");
   }
 
   const nextDraftFiles = files.map(createDraftFileRecord);
@@ -290,7 +290,7 @@ async function sendPrompt() {
 
   const selectedModel = resolveChatModel(els["model-select"].value);
   if (selectedModel.supportsUploads === false && state.draftFiles.length) {
-    throw new Error("专家模式不支持上传文件。");
+    throw new Error("Chế độ chuyên gia không hỗ trợ tải tệp lên.");
   }
 
   const sessionId = state.selectedSessionId || await workspace.createRemoteSession(!isIncognitoEnabled());
