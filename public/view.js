@@ -29,7 +29,7 @@ function summarizeAccounts(accounts, fallbackLabel) {
 }
 
 function getUserSummary(state) {
-  return state.session?.username || summarizeAccounts(state.accounts, "未绑定账号");
+  return state.session?.username || summarizeAccounts(state.accounts, "Chưa liên kết tài khoản");
 }
 
 function resolveSelectedSession(state) {
@@ -47,76 +47,76 @@ function resolvePageTitle(state) {
 
 function describeIncognito(incognito, role) {
   if (!incognito.effectiveEnabled) {
-    return "当前：关闭";
+    return "Hiện tại: Tắt";
   }
 
   if (role === "admin" && incognito.globalEnabled) {
-    return "当前：全局开启";
+    return "Hiện tại: Bật toàn cục";
   }
 
   if (incognito.globalEnabled) {
-    return "当前：管理员已开启";
+    return "Hiện tại: Quản trị viên đã bật";
   }
 
-  return "当前：仅自己开启";
+  return "Hiện tại: Chỉ bật cho cá nhân";
 }
 
 function describeChainOfThoughtOverride(state) {
   if (state?.globalEnabled) {
-    return "当前：管理员已全局开启（实验性）";
+    return "Hiện tại: Quản trị viên đã bật toàn cục (Thử nghiệm)";
   }
 
   if (state?.ownerEnabled) {
-    return "当前：仅自己开启（实验性）";
+    return "Hiện tại: Chỉ bật cho cá nhân (Thử nghiệm)";
   }
 
-  return "当前：关闭（实验性）";
+  return "Hiện tại: Tắt (Thử nghiệm)";
 }
 
 function describeToolParsingMode(state) {
-  const behavior = "检测到正文中的 tool 字段后，将只把正文和工具提示词交给快速模式整理为正式工具调用。";
+  const behavior = "Khi phát hiện trường tool trong nội dung, chỉ gửi nội dung và gợi ý tool cho chế độ nhanh để sắp xếp thành lời gọi công cụ chính thức.";
 
   if (state?.globalEnabled) {
-    return `当前：管理员已全局开启。${behavior}`;
+    return `Hiện tại: Quản trị viên đã bật toàn cục. ${behavior}`;
   }
 
   if (state?.ownerEnabled) {
-    return `当前：仅自己开启。${behavior}`;
+    return `Hiện tại: Chỉ bật cho cá nhân. ${behavior}`;
   }
 
-  return `当前：关闭。${behavior}`;
+  return `Hiện tại: Tắt. ${behavior}`;
 }
 
 function getIncognitoSummary(incognito, role) {
   if (!incognito.effectiveEnabled) {
-    return "关闭";
+    return "Tắt";
   }
 
   if (role === "admin" && incognito.globalEnabled) {
-    return "全局";
+    return "Toàn cục";
   }
 
-  return incognito.globalEnabled ? "全局" : "个人";
+  return incognito.globalEnabled ? "Toàn cục" : "Cá nhân";
 }
 
 function getSharedModeSummary(sharedMode) {
-  return sharedMode?.enabled ? "开启" : "关闭";
+  return sharedMode?.enabled ? "Bật" : "Tắt";
 }
 
 function describeSharedMode(sharedMode, incognito) {
   if (!sharedMode?.canToggle) {
     return sharedMode?.enabled
-      ? "管理员已开启，API 会在全站可用账号间轮询。"
-      : "管理员未开启。";
+      ? "Quản trị viên đã bật, API sẽ xoay vòng giữa tất cả tài khoản khả dụng trên toàn hệ thống."
+      : "Quản trị viên chưa bật.";
   }
 
   if (!incognito.globalEnabled) {
-    return "需先开启全局无痕，才能开启大锅饭。";
+    return "Cần bật chế độ ẩn danh toàn cục trước khi bật dùng chung tài khoản.";
   }
 
   return sharedMode.enabled
-    ? "已开启，所有 API key 共享全站可用 DeepSeek 账号轮询。"
-    : "开启后，所有 API key 会共享全站可用 DeepSeek 账号轮询。";
+    ? "Đã bật, tất cả API Key dùng chung xoay vòng tài khoản DeepSeek khả dụng."
+    : "Sau khi bật, tất cả API Key sẽ dùng chung xoay vòng tài khoản DeepSeek khả dụng.";
 }
 
 export function collectElements(ids) {
@@ -145,7 +145,7 @@ export function createView(options) {
 
   function renderHeader() {
     const state = currentState();
-    const roleLabel = state.session?.role === "admin" ? "管理员" : "用户";
+    const roleLabel = state.session?.role === "admin" ? "Quản trị viên" : "Người dùng";
     const themeMeta = getThemeMeta(themeController.getTheme());
     const incognito = state.session?.incognito;
 
@@ -216,7 +216,7 @@ export function createView(options) {
     const toolParsingMode = state.session.toolParsingMode ?? {};
     const incognito = state.session.incognito;
     const sharedMode = state.session.sharedAccountMode ?? { enabled: false, canToggle: false };
-    const label = incognito.scope === "global" ? "全员开启" : "仅自己开启";
+    const label = incognito.scope === "global" ? "Bật cho tất cả" : "Chỉ bật cho cá nhân";
     const canToggleSharedMode = Boolean(sharedMode.canToggle);
     const canEnableSharedMode = canToggleSharedMode && Boolean(incognito.globalEnabled);
     const sharedModeSubmit = els["shared-mode-form"].querySelector("button[type='submit']");
@@ -231,13 +231,13 @@ export function createView(options) {
     setText(els["incognito-label"], label);
     setText(els["incognito-description"], describeIncognito(incognito, state.session.role));
     els["incognito-toggle"].checked = Boolean(incognito.scopeEnabled);
-    setText(els["cot-override-label"], "仅自己开启（实验性）");
+    setText(els["cot-override-label"], "Chỉ bật cho cá nhân (Thử nghiệm)");
     setText(
       els["cot-override-description"],
       describeChainOfThoughtOverride(chainOfThoughtOverride)
     );
     els["cot-override-toggle"].checked = Boolean(chainOfThoughtOverride.ownerEnabled);
-    setText(els["tool-parsing-label"], "仅自己开启");
+    setText(els["tool-parsing-label"], "Chỉ bật cho cá nhân");
     setText(
       els["tool-parsing-description"],
       describeToolParsingMode(toolParsingMode)
@@ -245,7 +245,7 @@ export function createView(options) {
     els["tool-parsing-toggle"].checked = Boolean(toolParsingMode.ownerEnabled);
     els["shared-mode-panel"].classList.toggle("hidden", !canToggleSharedMode);
     setText(els["shared-mode-description"], describeSharedMode(sharedMode, incognito));
-    setText(els["shared-mode-label"], sharedMode.enabled ? "关闭大锅饭" : "开启大锅饭");
+    setText(els["shared-mode-label"], sharedMode.enabled ? "Tắt dùng chung tài khoản" : "Bật dùng chung tài khoản");
     els["shared-mode-toggle"].checked = Boolean(sharedMode.enabled);
     els["shared-mode-toggle"].disabled = !canEnableSharedMode;
     if (sharedModeSubmit) {
@@ -321,7 +321,7 @@ export function createView(options) {
     setText(els["settings-origin"], window.location.origin);
     setText(
       els["settings-registration-summary"],
-      state.registration?.inviteRequired ? "需要邀请码" : "开放注册"
+      state.registration?.inviteRequired ? "Yêu cầu mã mời" : "Đăng ký tự do"
     );
     renderSystemSettingsForm({
       accounts: state.accounts,

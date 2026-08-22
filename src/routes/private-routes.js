@@ -5,6 +5,7 @@ import {
   updateApiKeyRecord
 } from "../services/api-key-service.js";
 import {
+  checkAccountsForSession,
   getSessionIncognitoState,
   getVisibleAccounts,
   resolveScopedAccount
@@ -216,6 +217,20 @@ export async function handlePrivateApiRequest({ request, response, session, url 
 
   if (request.method === "POST" && url.pathname === "/api/accounts") {
     return handleAccountCreation(request, response, session);
+  }
+
+  if (request.method === "POST" && (url.pathname === "/api/accounts/check" || /^\/api\/accounts\/([^/]+)\/check$/.test(url.pathname))) {
+    const match = /^\/api\/accounts\/([^/]+)\/check$/.exec(url.pathname);
+    const accountId = match ? match[1] : null;
+    try {
+      const updatedAccounts = await checkAccountsForSession(session, accountId);
+      sendJson(response, 200, {
+        accounts: getVisibleAccounts(session).map(toPublicAccount)
+      });
+    } catch (err) {
+      sendError(response, 400, err.message);
+    }
+    return true;
   }
 
   if (await handleCaptchaAction(request, response, session, url)) {

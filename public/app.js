@@ -366,6 +366,7 @@ bindActions({
   onBatchDeleteInvites: services.deleteInvites,
   onBatchDeleteUsers: services.batchDeleteUsers,
   onBatchDisableUsers: services.batchDisableUsers,
+  onCheckAccounts: services.checkAccounts,
   onCreateInvites: services.createInvites,
   onCreateSession: workspace.createSessionAction,
   onDeleteInvite: services.deleteInvite,

@@ -63,7 +63,7 @@ export function createSessionWorkspace(options) {
     while (hasMore) {
       const cursorKey = String(cursor);
       if (seenCursors.has(cursorKey)) {
-        throw new Error(`会话分页游标重复：${cursorKey}`);
+        throw new Error(`Trùng lặp con trỏ phân trang phiên: ${cursorKey}`);
       }
 
       seenCursors.add(cursorKey);
@@ -79,7 +79,7 @@ export function createSessionWorkspace(options) {
 
       const nextCursor = pageSessions.at(-1)?.updated_at;
       if (!nextCursor) {
-        throw new Error("会话分页缺少下一个游标");
+        throw new Error("Phân trang phiên thiếu con trỏ tiếp theo");
       }
 
       cursor = nextCursor;

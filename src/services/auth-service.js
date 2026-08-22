@@ -5,7 +5,8 @@ import { isLocalOwnerId, createLocalOwnerId } from "./owner-service.js";
 import { createSession, deleteSession, getSession } from "./session-service.js";
 import { authenticateLocalUser, getLocalUserFromSession, registerLocalUser } from "./user-service.js";
 import { maskIdentifier } from "../utils/privacy.js";
-import { resolveDeepseekClientProfile } from "./deepseek-device.js";
+import { resolveDeepseekClientProfile, withResolvedDeepseekClientProfile } from "./deepseek-device.js";
+import { fetchCurrentDeepseekUser, refreshAccountToken } from "./deepseek-auth.js";
 
 export function resolveSession(request) {
   const cookie = request.cookies?.[config.sessionCookieName];
@@ -46,6 +47,54 @@ export function resolveScopedAccount(session, requestedAccountId) {
   const visibleAccounts = getVisibleAccounts(session);
   const resolvedAccountId = requestedAccountId ?? visibleAccounts[0]?.id;
   return visibleAccounts.find((account) => account.id === resolvedAccountId) ?? null;
+}
+
+export async function checkAndRefreshAccount(account) {
+  const accountWithProfile = withResolvedDeepseekClientProfile(account);
+  try {
+    await fetchCurrentDeepseekUser(accountWithProfile.token, accountWithProfile.deviceProfile);
+    return saveAccount({
+      ...accountWithProfile,
+      status: "online",
+      updatedAt: new Date().toISOString()
+    });
+  } catch {
+    if (accountWithProfile.credentialMode === "persistent" && accountWithProfile.loginValue && accountWithProfile.password) {
+      try {
+        return await refreshAccountToken(accountWithProfile);
+      } catch {
+        // failed to refresh
+      }
+    }
+    return saveAccount({
+      ...accountWithProfile,
+      status: "offline",
+      updatedAt: new Date().toISOString()
+    });
+  }
+}
+
+export async function checkAccountsForSession(session, accountId = null) {
+  const visibleAccounts = getVisibleAccounts(session);
+  if (accountId) {
+    const target = visibleAccounts.find((acc) => acc.id === accountId);
+    if (!target) {
+      throw new Error("Account not found");
+    }
+    const updated = await checkAndRefreshAccount(target);
+    return [updated];
+  }
+
+  const updatedAccounts = [];
+  for (const account of visibleAccounts) {
+    try {
+      const updated = await checkAndRefreshAccount(account);
+      updatedAccounts.push(updated);
+    } catch {
+      updatedAccounts.push(account);
+    }
+  }
+  return updatedAccounts;
 }
 
 export function loginAsAdmin(username, password) {

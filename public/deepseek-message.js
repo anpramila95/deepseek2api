@@ -143,14 +143,25 @@ function toSection(kind, content) {
   return { kind, content };
 }
 
+function parseMarkdown(text) {
+  if (typeof window !== "undefined" && window.marked && typeof window.marked.parse === "function") {
+    try {
+      return window.marked.parse(text ?? "");
+    } catch {
+      return escapeHtml(text ?? "");
+    }
+  }
+  return escapeHtml(text ?? "");
+}
+
 function renderSectionMarkup(section) {
   const kind = escapeHtml(section.kind);
-  const content = escapeHtml(section.content);
+  const formattedContent = parseMarkdown(section.content);
   if (section.kind === "thinking") {
-    return `<details class="message-section thinking" data-message-section="true" data-section-kind="thinking"><summary class="message-label">THINKING</summary><span data-section-text>${content}</span></details>`;
+    return `<details class="message-section thinking" data-message-section="true" data-section-kind="thinking"><summary class="message-label">THINKING</summary><div class="markdown-body" data-section-text>${formattedContent}</div></details>`;
   }
 
-  return `<div class="message-section ${kind}" data-message-section="true" data-section-kind="${kind}"><span data-section-text>${content}</span></div>`;
+  return `<div class="message-section ${kind}" data-message-section="true" data-section-kind="${kind}"><div class="markdown-body" data-section-text>${formattedContent}</div></div>`;
 }
 
 export function mapServerFile(file) {

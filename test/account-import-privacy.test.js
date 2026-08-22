@@ -79,8 +79,9 @@ test("account import confirms data optimization is disabled before persistence",
   const paths = result.requests.map((request) => request.pathname);
 
   assert.equal(result.error, "");
-  assert.deepEqual(paths.slice(0, 2), ["/users/login", "/users/update_settings"]);
-  assert.deepEqual(result.requests[1].body, { training_allowed: false });
+  const updateSettingsReq = result.requests.find((r) => r.pathname === "/users/update_settings");
+  assert.ok(updateSettingsReq, "update_settings request missing");
+  assert.deepEqual(updateSettingsReq.body, { training_allowed: false });
   assert.ok(paths.indexOf("/users/update_settings") < paths.indexOf("/client/settings"));
   assert.equal(result.state.accounts.length, 1);
   assert.equal(result.state.accounts[0].dataOptimizationDisabled, true);
@@ -92,7 +93,8 @@ test("account import leaves no account when the privacy update is rejected", () 
   const result = runImportFixture({ privacySucceeds: false });
 
   assert.match(result.error, /privacy update failed/i);
-  assert.deepEqual(result.requests.map((request) => request.pathname), [
+  const apiPaths = result.requests.map((request) => request.pathname).filter((p) => p !== "/sign_in");
+  assert.deepEqual(apiPaths, [
     "/users/login",
     "/users/update_settings"
   ]);

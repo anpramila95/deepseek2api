@@ -14,7 +14,7 @@ test("personal and global tool parsing controls are wired into the UI", () => {
 
   assert.match(html, /id="tool-parsing-toggle"/);
   assert.match(html, /id="settings-tool-parsing-mode"/);
-  assert.match(html, /工具解析模式（全局）/);
+  assert.match(html, /Chế độ phân tích công cụ \(Toàn cục\)/);
   assert.match(actions, /toolParsingModeEnabled/);
   assert.match(services, /\/api\/tool-parsing-mode/);
   assert.match(view, /state\.session\.toolParsingMode/);

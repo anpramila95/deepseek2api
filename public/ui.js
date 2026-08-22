@@ -38,7 +38,7 @@ function renderFileMarkup(file, options = {}) {
         data-draft-file-id="${escapeHtml(file.localId)}"
         data-ripple
       >
-        删除
+        Xóa
       </button>
     `
     : "";
@@ -66,7 +66,7 @@ function renderFileListMarkup(files, options = {}) {
 }
 function formatDateTime(value) {
   if (!value) {
-    return "未记录";
+    return "Chưa ghi nhận";
   }
 
   return new Intl.DateTimeFormat("zh-CN", {
@@ -150,7 +150,7 @@ function renderApiKeyMarkup(key) {
       </div>
       <div class="key-card-meta">
         <span class="meta-label">Sử dụng hôm nay</span>
-        <strong class="usage-number">${escapeHtml(String(key.todayUsage ?? 0))}</strong><span> 请求</span>
+        <strong class="usage-number">${escapeHtml(String(key.todayUsage ?? 0))}</strong><span> yêu cầu</span>
       </div>
       <div class="key-card-menu">
         <button
@@ -177,14 +177,14 @@ function renderRequestLogMarkup(log) {
       <span>${escapeHtml(log.model || "-")}</span>
       <span class="status-dot ${statusClass}">${escapeHtml(log.status ?? "-")}</span>
       <span>${escapeHtml(Number.isFinite(log.durationMs) ? `${log.durationMs}ms` : "-")}</span>
-      <span>${escapeHtml(log.error || "正常")}</span>
+      <span>${escapeHtml(log.error || "Bình thường")}</span>
     </article>
   `;
 }
 function renderRequestLogListMarkup(logs) {
   return `
     <div class="request-log-header">
-      <span>时间</span><span>方法</span><span>路径</span><span>模型</span><span>状态</span><span>耗时</span><span>结果</span>
+      <span>Thời gian</span><span>Phương thức</span><span>Đường dẫn</span><span>Mô hình</span><span>Trạng thái</span><span>Thời gian</span><span>Kết quả</span>
     </div>
     ${logs.map(renderRequestLogMarkup).join("")}
   `;
@@ -264,13 +264,13 @@ function renderRequestChartMarkup(logs) {
 function renderCaptchaAlerts(accounts) {
   const alerts = accounts.filter((account) => account.captchaState?.triggered);
   if (!alerts.length) {
-    return createEmptyState("暂无验证码告警", "账号触发风控后会显示在这里。");
+    return createEmptyState("Không có cảnh báo CAPTCHA", "Tài khoản kích hoạt kiểm tra bảo mật sẽ hiển thị tại đây.");
   }
 
   return alerts.map((account) => `
     <article class="alert-row danger">
       <strong>${escapeHtml(resolveAccountLabel(account))}</strong>
-      <span>${escapeHtml(account.captchaState?.instruction || "验证码待处理")}</span>
+      <span>${escapeHtml(account.captchaState?.instruction || "CAPTCHA đang chờ xử lý")}</span>
       <small>${escapeHtml(formatDateTime(account.captchaState?.triggerTime))}</small>
     </article>
   `).join("");
@@ -310,7 +310,7 @@ export function renderAccountOptions({ accounts, select, selectedAccountId }) {
         const label = resolveAccountLabel(account);
         return `<option value="${escapeHtml(account.id)}">${escapeHtml(label)}</option>`;
       }).join("")
-    : '<option value="">暂无可用账号</option>';
+    : '<option value="">Chưa có tài khoản khả dụng</option>';
   select.value = selectedAccountId;
 }
 export function renderDraftFileList({ container, files, onDelete }) {
@@ -325,11 +325,11 @@ export function renderDraftFileList({ container, files, onDelete }) {
 export function renderApiKeyList({ container, keys, onDelete, onToggleToolCalls }) {
   container.innerHTML = keys.length
     ? keys.map(renderApiKeyMarkup).join("")
-    : createEmptyState("暂无密钥", "创建后显示在这里。");
+    : createEmptyState("Chưa có API Key", "API Key sau khi tạo sẽ hiển thị tại đây.");
   const keyById = new Map(keys.map((key) => [key.id, key]));
   container.querySelectorAll("[data-key-copy-id]").forEach((button) => {
     button.onclick = async () => {
-      const originalTitle = button.getAttribute("title") || "复制 API Key";
+      const originalTitle = button.getAttribute("title") || "Sao chép API Key";
       const copyValue = keyById.get(button.dataset.keyCopyId)?.key;
 
       if (!copyValue) {
@@ -338,15 +338,15 @@ export function renderApiKeyList({ container, keys, onDelete, onToggleToolCalls 
 
       try {
         await copyText(copyValue);
-        button.setAttribute("title", "已复制");
-        button.setAttribute("aria-label", "已复制");
+        button.setAttribute("title", "Đã sao chép");
+        button.setAttribute("aria-label", "Đã sao chép");
         window.setTimeout(() => {
           button.setAttribute("title", originalTitle);
           button.setAttribute("aria-label", originalTitle);
         }, 1200);
       } catch {
-        button.setAttribute("title", "复制失败");
-        button.setAttribute("aria-label", "复制失败");
+        button.setAttribute("title", "Sao chép thất bại");
+        button.setAttribute("aria-label", "Sao chép thất bại");
       }
     };
   });
@@ -366,24 +366,24 @@ export function renderApiKeyList({ container, keys, onDelete, onToggleToolCalls 
 export function renderRequestLogList({ container, logs }) {
   container.innerHTML = logs?.length
     ? renderRequestLogListMarkup(logs)
-    : createEmptyState("暂无请求日志", "请求完成后会显示在这里。");
+    : createEmptyState("Chưa có nhật ký yêu cầu", "Nhật ký sau khi hoàn thành yêu cầu sẽ hiển thị tại đây.");
 }
 export function renderDashboardHome({ containers, state }) {
   containers.healthCards.innerHTML = renderDashboardMetricCards(state);
   containers.requestChart.innerHTML = state.requestLogs.length
     ? renderRequestChartMarkup(state.requestLogs)
-    : createEmptyState("暂无趋势数据", "请求完成后会生成小时趋势。");
+    : createEmptyState("Chưa có dữ liệu xu hướng", "Xu hướng theo giờ sẽ tạo sau khi có yêu cầu.");
   containers.recentLogs.innerHTML = state.requestLogs.length
     ? renderRequestLogListMarkup(state.requestLogs.slice(0, 5))
-    : createEmptyState("暂无最近请求", "请求完成后会显示摘要。");
+    : createEmptyState("Chưa có yêu cầu gần đây", "Tóm tắt sẽ hiển thị sau khi hoàn thành yêu cầu.");
   containers.captchaAlerts.innerHTML = renderCaptchaAlerts(state.accounts);
 }
 export function renderSystemSettingsForm({ accounts, elements, isAdmin, settings }) {
   const captcha = settings?.captcha ?? {};
   elements.endpoint.value = captcha.yescaptchaEndpoint || "https://api.yescaptcha.com";
   elements.yescaptchaKey.placeholder = captcha.hasYescaptchaKey
-    ? `已配置：${captcha.yescaptchaKeyMasked || "******"}，留空保持不变`
-    : "输入 YesCaptcha clientKey";
+    ? `Đã cấu hình: ${captcha.yescaptchaKeyMasked || "******"}, để trống để giữ nguyên`
+    : "Nhập YesCaptcha clientKey";
   elements.autoSolve.checked = captcha.autoSolveEnabled === true;
   elements.visionFallback.checked = captcha.visionFallbackEnabled !== false;
   if (elements.chainOfThoughtOverride) {
@@ -398,7 +398,7 @@ export function renderSystemSettingsForm({ accounts, elements, isAdmin, settings
   elements.maxRetries.value = captcha.maxRetries ?? 3;
   elements.cooldownMs.value = captcha.cooldownMs ?? 60000;
   elements.visionAccount.innerHTML = [
-    '<option value="">自动选择备用账号</option>',
+    '<option value="">Tự động chọn tài khoản dự phòng</option>',
     ...accounts.map((account) => (
       `<option value="${escapeHtml(account.id)}">${escapeHtml(resolveAccountLabel(account))}</option>`
     ))
@@ -424,7 +424,7 @@ export function renderSystemSettingsForm({ accounts, elements, isAdmin, settings
 export function setSelectOptions({ select, values }) {
   select.innerHTML = values.length
     ? values.map((value) => `<option>${escapeHtml(value)}</option>`).join("")
-    : '<option value="">暂无路径</option>';
+    : '<option value="">Chưa có đường dẫn</option>';
 }
 export function updateDashboardMetrics(options) {
   const {
@@ -442,8 +442,8 @@ export function updateDashboardMetrics(options) {
   sessionCountElement.textContent = String(counts.sessions);
   sessionMetricElement.textContent = String(counts.sessions);
   sessionCaptionElement.textContent = counts.sessions
-    ? `共 ${counts.sessions} 个会话`
-    : "暂无会话";
+    ? `Tổng cộng ${counts.sessions} phiên`
+    : "Chưa có phiên";
 }
 export function wireRippleEffects() {
   document.addEventListener("click", (event) => {

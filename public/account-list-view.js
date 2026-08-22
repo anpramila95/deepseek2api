@@ -72,6 +72,19 @@ function renderCaptchaPanel(account) {
   `;
 }
 
+function renderCheckButton(accountId) {
+  return `
+    <button
+      type="button"
+      class="button-ghost"
+      data-account-check-id="${escapeHtml(accountId)}"
+      data-ripple
+    >
+      Kiểm tra
+    </button>
+  `;
+}
+
 function renderDeleteButton(accountId) {
   return `
     <button
@@ -103,6 +116,7 @@ function renderAccountItem(account, options) {
       </div>
       <div class="inline-actions account-actions">
         <span class="chip">${escapeHtml(renderStatusText(account.id, selectedAccountId))}</span>
+        ${renderCheckButton(account.id)}
         ${renderDeleteButton(account.id)}
       </div>
       ${renderCaptchaPanel(account)}

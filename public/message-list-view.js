@@ -76,6 +76,17 @@ function isNearBottom(container) {
   return container.scrollHeight - container.scrollTop - container.clientHeight <= BOTTOM_STICK_THRESHOLD_PX;
 }
 
+function parseMarkdown(text) {
+  if (typeof window !== "undefined" && window.marked && typeof window.marked.parse === "function") {
+    try {
+      return window.marked.parse(text ?? "");
+    } catch {
+      return escapeHtml(text ?? "");
+    }
+  }
+  return escapeHtml(text ?? "");
+}
+
 function createSectionElement(kind) {
   const sectionElement = document.createElement(kind === "thinking" ? "details" : "div");
   sectionElement.className = `message-section ${kind}`;
@@ -89,7 +100,8 @@ function createSectionElement(kind) {
     sectionElement.appendChild(labelElement);
   }
 
-  const textElement = document.createElement("span");
+  const textElement = document.createElement("div");
+  textElement.className = "markdown-body";
   textElement.dataset.sectionText = "true";
   sectionElement.appendChild(textElement);
   return sectionElement;
@@ -140,7 +152,8 @@ export function patchLastMessageDelta(options) {
     return;
   }
 
-  textElement.textContent += delta.text;
+  textElement.dataset.rawText = (textElement.dataset.rawText || textElement.textContent || "") + delta.text;
+  textElement.innerHTML = parseMarkdown(textElement.dataset.rawText);
   if (shouldStickToBottom) {
     container.scrollTop = container.scrollHeight;
   }

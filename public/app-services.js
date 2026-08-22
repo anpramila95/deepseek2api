@@ -116,6 +116,12 @@ export function createAppServices(options) {
     await bootstrapWithRevealedApiKeys();
   }
 
+  async function checkAccounts(accountId = null) {
+    const url = accountId ? `/api/accounts/${accountId}/check` : "/api/accounts/check";
+    await postJson(url, {});
+    await bootstrapWithRevealedApiKeys();
+  }
+
   async function deleteAccount(accountId) {
     setStatus(els["account-status"], "Đang xóa...");
 
@@ -262,6 +268,7 @@ export function createAppServices(options) {
     batchDeleteUsers,
     batchDisableUsers,
     changeAccount,
+    checkAccounts,
     createInvites,
     clearCaptcha,
     deleteAccount,

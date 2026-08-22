@@ -37,6 +37,7 @@ function bindWorkspaceActions({
   els,
   onAccountChange,
   onAddAccount,
+  onCheckAccounts,
   onClearCaptcha,
   onLogout,
   onResolveCaptcha,
@@ -142,11 +143,23 @@ function bindWorkspaceActions({
 
     try {
       await onToggleToolParsingMode(els["tool-parsing-toggle"].checked);
-      setStatus(els["tool-parsing-status"], "已保存。");
+      setStatus(els["tool-parsing-status"], "Đã lưu.");
     } catch (error) {
       setStatus(els["tool-parsing-status"], error.message);
     }
   };
+
+  if (els["check-accounts-button"]) {
+    els["check-accounts-button"].onclick = async () => {
+      setStatus(els["account-status"], "Đang kiểm tra tất cả tài khoản...");
+      try {
+        await onCheckAccounts();
+        setStatus(els["account-status"], "Đã kiểm tra xong tất cả tài khoản.");
+      } catch (error) {
+        setStatus(els["account-status"], error.message);
+      }
+    };
+  }
 
   els["account-list"].addEventListener("submit", async (event) => {
     const form = event.target.closest("[data-captcha-form]");
@@ -169,6 +182,19 @@ function bindWorkspaceActions({
   });
 
   els["account-list"].addEventListener("click", async (event) => {
+    const checkButton = event.target.closest("[data-account-check-id]");
+    if (checkButton) {
+      const accountId = checkButton.dataset.accountCheckId;
+      setStatus(els["account-status"], "Đang kiểm tra tài khoản...");
+      try {
+        await onCheckAccounts(accountId);
+        setStatus(els["account-status"], "Đã kiểm tra xong tài khoản.");
+      } catch (error) {
+        setStatus(els["account-status"], error.message);
+      }
+      return;
+    }
+
     const retryButton = event.target.closest("[data-captcha-retry]");
     const clearButton = event.target.closest("[data-captcha-clear]");
     const accountId = retryButton?.dataset.captchaRetry || clearButton?.dataset.captchaClear;

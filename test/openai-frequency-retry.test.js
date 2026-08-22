@@ -5,7 +5,7 @@ import { config, resolveDeepseekApiPath } from "../src/config.js";
 import { createSimulatedClientProfile } from "../src/services/deepseek-device.js";
 import { streamOpenAiResponse } from "../src/services/openai-bridge.js";
 
-const FREQUENCY_MESSAGE = "消息发送过于频繁，请稍后重试";
+const FREQUENCY_MESSAGE = "Quá nhiều yêu cầu, thử lại sau";
 
 function createJsonResponse(payload) {
   return new Response(JSON.stringify(payload), {

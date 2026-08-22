@@ -7,12 +7,12 @@ import {
   withDeepseekMessageFrequencyRetry
 } from "../src/services/deepseek-frequency-retry.js";
 
-const FREQUENCY_MESSAGE = "消息发送过于频繁，请稍后重试";
+const FREQUENCY_MESSAGE = "Quá nhiều yêu cầu, thử lại sau";
 
 test("only the specific DeepSeek message-frequency error is retryable", () => {
   assert.equal(isDeepseekMessageFrequencyError(new Error(FREQUENCY_MESSAGE)), true);
   assert.equal(
-    isDeepseekMessageFrequencyError(new Error("上游错误：消息发送过于频繁，请稍后重试。")),
+    isDeepseekMessageFrequencyError(new Error("Quá nhiều yêu cầu, thử lại sau")),
     true
   );
   assert.equal(isDeepseekMessageFrequencyError(new Error("Rate limit reached")), false);
