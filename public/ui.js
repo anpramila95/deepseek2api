@@ -1,20 +1,20 @@
 ﻿import { resolveAccountLabel } from "/account-display.js";
 import { createEmptyState, escapeHtml } from "/utils.js";
 const TAB_LABELS = Object.freeze({
-  accounts: "账号管理",
-  admin: "用户管理",
-  chat: "聊天工作区",
-  dashboard: "仪表盘首页",
-  explorer: "请求日志监控",
-  keys: "API Key 管理",
-  settings: "系统设置"
+  accounts: "Quản lý tài khoản",
+  admin: "Quản lý người dùng",
+  chat: "Khu vực làm việc trò chuyện",
+  dashboard: "Trang tổng quan",
+  explorer: "Giám sát nhật ký yêu cầu",
+  keys: "Quản lý API Key",
+  settings: "Cài đặt hệ thống"
 });
 const FILE_STATUS_LABELS = Object.freeze({
-  FAILED: "失败",
-  PARSING: "解析中",
-  PENDING: "等待中",
-  SUCCESS: "已完成",
-  UPLOADING: "上传中"
+  FAILED: "Thất bại",
+  PARSING: "Đang phân tích",
+  PENDING: "Đang chờ",
+  SUCCESS: "Hoàn thành",
+  UPLOADING: "Đang tải lên"
 });
 function formatFileSize(bytes) {
   if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
@@ -109,9 +109,9 @@ async function copyText(value) {
 
 function renderApiKeyMarkup(key) {
   const checked = key.toolCallsEnabled ? " checked" : "";
-  const toolLabel = key.toolCallsEnabled ? "工具调用：开启" : "工具调用：关闭";
+  const toolLabel = key.toolCallsEnabled ? "Gọi công cụ: Bật" : "Gọi công cụ: Tắt";
   const copyValue = key.key || "";
-  const copyTitle = copyValue ? "复制 API Key" : "旧 Key 无法复制完整值";
+  const copyTitle = copyValue ? "Sao chép API Key" : "Key cũ không thể sao chép giá trị đầy đủ";
   const copyAttributes = copyValue
     ? `title="${copyTitle}" aria-label="${copyTitle}" data-key-copy-id="${escapeHtml(key.id)}"`
     : `title="${copyTitle}" aria-label="${copyTitle}" disabled`;
@@ -130,15 +130,15 @@ function renderApiKeyMarkup(key) {
             ${renderCopyIcon()}
           </button>
         </div>
-        <strong>${escapeHtml(key.label || "未命名 Key")}</strong>
-        <span class="key-created">创建于 ${escapeHtml(formatDateTime(key.createdAt))}</span>
+        <strong>${escapeHtml(key.label || "Key chưa đặt tên")}</strong>
+        <span class="key-created">Tạo lúc ${escapeHtml(formatDateTime(key.createdAt))}</span>
       </div>
       <div class="key-card-meta">
-        <span class="meta-label">模型权限</span>
-        <span class="blue-pill">全部模型</span>
+        <span class="meta-label">Quyền mô hình</span>
+        <span class="blue-pill">Tất cả mô hình</span>
       </div>
       <div class="key-card-meta">
-        <span class="meta-label">工具调用</span>
+        <span class="meta-label">Gọi công cụ</span>
         <label class="toggle-chip tool-pill">
           <input
             type="checkbox"
@@ -149,7 +149,7 @@ function renderApiKeyMarkup(key) {
         </label>
       </div>
       <div class="key-card-meta">
-        <span class="meta-label">今日使用</span>
+        <span class="meta-label">Sử dụng hôm nay</span>
         <strong class="usage-number">${escapeHtml(String(key.todayUsage ?? 0))}</strong><span> 请求</span>
       </div>
       <div class="key-card-menu">
@@ -157,8 +157,8 @@ function renderApiKeyMarkup(key) {
           type="button"
           class="icon-button"
           data-key-id="${escapeHtml(key.id)}"
-          title="删除 Key"
-          aria-label="删除 Key"
+          title="Xóa Key"
+          aria-label="Xóa Key"
           data-ripple
         >
           ${renderTrashIcon()}
@@ -208,10 +208,10 @@ function renderDashboardMetricCards(state) {
   const successRate = totalLogs ? Math.round(((totalLogs - failedLogs) / totalLogs) * 100) : 100;
   const latestLog = state.requestLogs[0];
   const cards = [
-    ["可用账号", health.online, `${health.captcha} 个验证码 / ${health.offline} 个离线`, "ok"],
-    ["API Key", state.apiKeys.length, "已创建密钥数量", "info"],
-    ["成功率", `${successRate}%`, `最近 ${totalLogs} 条请求`, failedLogs ? "warn" : "ok"],
-    ["最新请求", latestLog?.status ?? "-", latestLog ? latestLog.path : "暂无请求", Number(latestLog?.status) >= 400 ? "danger" : "info"]
+    ["Tài khoản khả dụng", health.online, `${health.captcha} captcha / ${health.offline} ngoại tuyến`, "ok"],
+    ["API Key", state.apiKeys.length, "Số lượng key đã tạo", "info"],
+    ["Tỷ lệ thành công", `${successRate}%`, `${totalLogs} yêu cầu gần đây`, failedLogs ? "warn" : "ok"],
+    ["Yêu cầu mới nhất", latestLog?.status ?? "-", latestLog ? latestLog.path : "Chưa có yêu cầu", Number(latestLog?.status) >= 400 ? "danger" : "info"]
   ];
 
   return cards.map(([label, value, detail, tone]) => `

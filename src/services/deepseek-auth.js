@@ -8,6 +8,7 @@ import {
 } from "./deepseek-device.js";
 import { createProtocolRequestContext } from "./deepseek-protocol.js";
 import { reportClientSettingsForAccount } from "./deepseek-settings.js";
+import { solveWaf } from "./waf-solver.js";
 
 function isEmail(loginValue) {
   return String(loginValue ?? "").includes("@");
@@ -41,20 +42,39 @@ export async function loginToDeepseek({ loginValue, password, deviceId, devicePr
   const maskedUser = maskIdentifier(loginValue);
   console.error(`[DeepSeek Auth] Resolving profile (user: "${maskedUser}", deviceId: ${profile.loginDeviceId}, OS: ${profile.os})`);
 
+  let wafCookie = "";
+  try {
+    const siteUrl = `${config.deepseekBaseUrl}/sign_in`;
+    const ua = profile.userAgent || "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36";
+    console.error(`[DeepSeek Auth] Fetching WAF token prior to login...`);
+    const { cookie } = await solveWaf(siteUrl, ua);
+    if (cookie) {
+      wafCookie = cookie;
+      console.error(`[DeepSeek Auth] WAF token acquired successfully.`);
+    }
+  } catch (wafErr) {
+    console.error(`[DeepSeek Auth] WAF pre-solve skipped/failed: ${wafErr.message}`);
+  }
+
   const requestContext = createProtocolRequestContext(profile, "/users/login", { method: "POST" });
   const targetUrl = `${config.deepseekBaseUrl}${resolveDeepseekApiPath("/users/login")}`;
   console.error(`[DeepSeek Auth] Sending POST request to ${targetUrl}`);
 
-  const response = await fetch(targetUrl, {
+  const extraHeaders = {
+    ...requestContext.headers,
+    "content-type": "application/json"
+  };
+  if (wafCookie) {
+    extraHeaders.cookie = wafCookie;
+  }
+
+  let response = await fetch(targetUrl, {
     method: "POST",
-    headers: createBaseHeaders("", {
-      ...requestContext.headers,
-      "content-type": "application/json"
-    }, profile),
+    headers: createBaseHeaders("", extraHeaders, profile),
     body: JSON.stringify(buildLoginPayload(loginValue, password, profile))
   });
 
-  const wafAction = response.headers.get("x-amzn-waf-action");
+  let wafAction = response.headers.get("x-amzn-waf-action");
   console.error(`[DeepSeek Auth] Response status: HTTP ${response.status} ${response.statusText}${wafAction ? ` (x-amzn-waf-action: ${wafAction})` : ""}`);
 
   let responseText = "";
