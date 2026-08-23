@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { isChainOfThoughtOverrideEnabledForOwner } from "./chain-of-thought-override-service.js";
 import { collectCompletionContent, streamCompletionContent } from "./openai-completion-runner.js";
-import { assertNoLegacySearchOptions, resolveOpenAiModel } from "./openai-request.js";
+import { assertNoLegacySearchOptions, resolveOpenAiModel, resolveVisionModel } from "./openai-request.js";
 import { appendExpertPromptSuffix } from "./expert-prompt-service.js";
 import { withDeepseekMessageFrequencyRetry } from "./deepseek-frequency-retry.js";
 import { createToolSieve, extractToolAwareOutput } from "./openai-tool-sieve.js";
@@ -51,16 +51,16 @@ export function resolveCompletionRequest({ body, ownerId, toolCallsEnabled }) {
     throw createOpenAiError(400, "Tool calls are disabled for this API key");
   }
 
-  const model = resolveOpenAiModel(body?.model);
+  let model = resolveOpenAiModel(body?.model);
   const imageInputs = extractImageInputs(body?.messages ?? []);
   const refFileIds = Array.isArray(body?.ref_file_ids) ? body.ref_file_ids.filter(Boolean) : [];
 
-  if ((imageInputs.length || refFileIds.length) && model.supportsUploads === false) {
-    throw createOpenAiError(400, "Expert models do not support file or image uploads");
+  if (imageInputs.length && model.modelType !== "vision") {
+    model = resolveVisionModel(model);
   }
 
-  if (imageInputs.length && model.modelType !== "vision") {
-    throw createOpenAiError(400, "Image inputs require deepseek-vision or deepseek-vision-reasoner");
+  if ((imageInputs.length || refFileIds.length) && model.supportsUploads === false) {
+    throw createOpenAiError(400, "Expert models do not support file uploads");
   }
 
   const promptRequest = buildOpenAiPrompt({

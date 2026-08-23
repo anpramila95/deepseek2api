@@ -24,18 +24,29 @@ function renderAccountMeta(account, isAdmin) {
   return [detail, owner].filter(Boolean).join(" | ");
 }
 
-function renderStatusText(accountId, selectedAccountId) {
-  return accountId === selectedAccountId ? "Hiện tại" : "Khả dụng";
+function renderStatusText(account, selectedAccountId) {
+  const isSelected = account.id === selectedAccountId;
+  const isDead = account.status === "offline" || account.status === "captcha_required" || Boolean(account.captchaState?.triggered);
+
+  if (isDead) {
+    return { text: "Không hoạt động", className: "chip chip-danger" };
+  }
+
+  if (isSelected) {
+    return { text: "Đang chọn", className: "chip chip-primary" };
+  }
+
+  return { text: "Hoạt động", className: "chip" };
 }
 
 function resolveHealth(account) {
   if (account.captchaState?.triggered || account.status === "captcha_required") {
-    return { className: "danger", label: "Chờ xử lý CAPTCHA" };
+    return { className: "danger", label: "Cần xử lý CAPTCHA" };
   }
 
   if (!account.status || account.status === "online") {
     return account.settingsReported && account.dataOptimizationDisabled
-      ? { className: "ok", label: "Khỏe mạnh" }
+      ? { className: "ok", label: "Hoạt động tốt" }
       : { className: "warn", label: "Chờ xác nhận cài đặt" };
   }
 
@@ -43,7 +54,7 @@ function resolveHealth(account) {
     return { className: "warn", label: "Giới hạn tần suất" };
   }
 
-  return { className: "danger", label: "Ngoại tuyến" };
+  return { className: "danger", label: "Không hoạt động" };
 }
 
 function renderCaptchaPanel(account) {
@@ -104,6 +115,8 @@ function renderAccountItem(account, options) {
   const selectedClass = account.id === selectedAccountId ? " active" : "";
   const health = resolveHealth(account);
 
+  const statusBadge = renderStatusText(account, selectedAccountId);
+
   return `
     <article class="account-item${selectedClass} account-health-${health.className}">
       <div class="account-info">
@@ -115,7 +128,7 @@ function renderAccountItem(account, options) {
         <span class="account-meta">Trạng thái: ${escapeHtml(health.label)} · Tối ưu dữ liệu: ${account.dataOptimizationDisabled ? "Đã tắt" : "Chưa xác nhận"} · Settings: ${account.settingsReported ? "Đã báo cáo" : "Chưa báo cáo"} · Cập nhật: ${escapeHtml(formatDateTime(account.updatedAt))}</span>
       </div>
       <div class="inline-actions account-actions">
-        <span class="chip">${escapeHtml(renderStatusText(account.id, selectedAccountId))}</span>
+        <span class="${escapeHtml(statusBadge.className)}">${escapeHtml(statusBadge.text)}</span>
         ${renderCheckButton(account.id)}
         ${renderDeleteButton(account.id)}
       </div>

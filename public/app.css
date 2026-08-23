@@ -911,6 +911,18 @@ body.sidebar-collapsed #refresh-sessions {
   padding: 4px 9px;
 }
 
+.chip.chip-danger {
+  background: var(--danger-subtle, rgba(220, 38, 38, 0.1));
+  border-color: var(--danger, #dc2626);
+  color: var(--danger, #dc2626);
+}
+
+.chip.chip-primary {
+  background: var(--accent-subtle, rgba(16, 185, 129, 0.1));
+  border-color: var(--accent, #10b981);
+  color: var(--accent, #10b981);
+}
+
 .sidebar .metric-pill {
   color: var(--accent);
 }

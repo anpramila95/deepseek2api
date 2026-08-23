@@ -1,7 +1,18 @@
 const DEFAULT_OPENAI_MODEL = "deepseek-chat";
 const MODEL_CREATED_AT = 0;
 
-const OPENAI_MODELS = Object.freeze([
+const PUBLIC_OPENAI_MODELS = Object.freeze([
+  Object.freeze({ id: "deepseek-v4-flash", modelType: "default", thinkingEnabled: false, searchEnabled: false, vision: false, supportsUploads: true }),
+  Object.freeze({ id: "deepseek-v4-flash-search", modelType: "default", thinkingEnabled: false, searchEnabled: true, vision: false, supportsUploads: true }),
+  Object.freeze({ id: "deepseek-v4-flash-thinking", modelType: "default", thinkingEnabled: true, searchEnabled: false, vision: false, supportsUploads: true }),
+  Object.freeze({ id: "deepseek-v4-flash-thinking-search", modelType: "default", thinkingEnabled: true, searchEnabled: true, vision: false, supportsUploads: true }),
+  Object.freeze({ id: "deepseek-v4-pro", modelType: "expert", thinkingEnabled: false, searchEnabled: false, vision: false, supportsUploads: false }),
+  Object.freeze({ id: "deepseek-v4-pro-thinking", modelType: "expert", thinkingEnabled: true, searchEnabled: false, vision: false, supportsUploads: false }),
+  Object.freeze({ id: "deepseek-v4-flash-vision", modelType: "vision", thinkingEnabled: false, searchEnabled: false, vision: true, supportsUploads: true }),
+  Object.freeze({ id: "deepseek-v4-pro-vision", modelType: "vision", thinkingEnabled: true, searchEnabled: false, vision: true, supportsUploads: true })
+]);
+
+const LEGACY_OPENAI_MODELS = Object.freeze([
   Object.freeze({ id: "deepseek-chat", modelType: "default", thinkingEnabled: false, searchEnabled: false, vision: false, supportsUploads: true }),
   Object.freeze({ id: "deepseek-chat-search", modelType: "default", thinkingEnabled: false, searchEnabled: true, vision: false, supportsUploads: true }),
   Object.freeze({ id: "deepseek-reasoner", modelType: "default", thinkingEnabled: true, searchEnabled: false, vision: false, supportsUploads: true }),
@@ -10,6 +21,11 @@ const OPENAI_MODELS = Object.freeze([
   Object.freeze({ id: "deepseek-reasoner-expert", modelType: "expert", thinkingEnabled: true, searchEnabled: false, vision: false, supportsUploads: false }),
   Object.freeze({ id: "deepseek-vision", modelType: "vision", thinkingEnabled: false, searchEnabled: false, vision: true, supportsUploads: true }),
   Object.freeze({ id: "deepseek-vision-reasoner", modelType: "vision", thinkingEnabled: true, searchEnabled: false, vision: true, supportsUploads: true })
+]);
+
+const OPENAI_MODELS = Object.freeze([
+  ...PUBLIC_OPENAI_MODELS,
+  ...LEGACY_OPENAI_MODELS
 ]);
 
 const OPENAI_MODEL_MAP = Object.freeze(
@@ -23,7 +39,7 @@ function createBadRequestError(message) {
 }
 
 export function listOpenAiModels() {
-  return OPENAI_MODELS.map(({ id }) => ({
+  return PUBLIC_OPENAI_MODELS.map(({ id }) => ({
     id,
     object: "model",
     created: MODEL_CREATED_AT,
@@ -40,6 +56,19 @@ export function resolveOpenAiModel(model) {
   }
 
   return resolvedModel;
+}
+
+export function resolveVisionModel(model) {
+  if (model.modelType === "vision") {
+    return model;
+  }
+
+  // Thinking models map to vision-thinking (pro-vision), non-thinking map to flash-vision
+  const visionModelId = model.thinkingEnabled
+    ? "deepseek-v4-pro-vision"
+    : "deepseek-v4-flash-vision";
+
+  return resolveOpenAiModel(visionModelId);
 }
 
 export function assertNoLegacySearchOptions(body) {
