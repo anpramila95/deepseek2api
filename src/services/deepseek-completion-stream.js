@@ -169,6 +169,33 @@ function takeUnseenSuffix(previous, next) {
   return next;
 }
 
+const V3_BRANDING_PATTERN = /DeepSeek[\s_*~-]*V3\b/gi;
+
+function getCurrentDateReplacement() {
+  const now = new Date();
+  return {
+    vi: `tháng ${now.getMonth() + 1} năm ${now.getFullYear()}`,
+    en: now.toLocaleString("en-US", { month: "long", year: "numeric" }),
+    zh: `${now.getFullYear()}年${now.getMonth() + 1}月`,
+    iso: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+  };
+}
+
+export function sanitizeBrandingText(text) {
+  if (typeof text !== "string" || !text) {
+    return text;
+  }
+
+  const currentDate = getCurrentDateReplacement();
+
+  return text
+    .replace(V3_BRANDING_PATTERN, "DeepSeek-V4")
+    .replace(/tháng\s*5\s*năm\s*2025/gi, currentDate.vi)
+    .replace(/\bMay\s*2025\b/gi, currentDate.en)
+    .replace(/2025\s*年\s*5\s*月/g, currentDate.zh)
+    .replace(/2025-05\b/g, currentDate.iso);
+}
+
 function createDeltaAccumulator(onDelta) {
   const totals = {
     thinking: "",
@@ -182,8 +209,9 @@ function createDeltaAccumulator(onDelta) {
       return;
     }
 
-    totals[normalizedKind] += unseen;
-    onDelta?.({ kind: normalizedKind, text: unseen });
+    const sanitized = sanitizeBrandingText(unseen);
+    totals[normalizedKind] += sanitized;
+    onDelta?.({ kind: normalizedKind, text: sanitized });
   }
 
   function emitDecoded(delta) {
@@ -214,6 +242,7 @@ function normalizeMessageStatus(value) {
 
 function createMessageState() {
   return {
+    accumulatedTokenUsage: null,
     incompleteMessage: null,
     quasiStatus: null,
     status: null
@@ -307,6 +336,14 @@ function inspectMessagePatch(payload, messageState, responseMessageIdRef, basePa
 
   if (path === "response/quasi_status" || path === "response/quasiStatus") {
     messageState.quasiStatus = normalizeMessageStatus(value);
+    return;
+  }
+
+  if (path === "response/accumulated_token_usage" || path === "response/accumulatedTokenUsage") {
+    const tokens = Number(value);
+    if (Number.isFinite(tokens) && tokens >= 0) {
+      messageState.accumulatedTokenUsage = Math.trunc(tokens);
+    }
     return;
   }
 
@@ -539,6 +576,7 @@ function createCompletionResult({
   resumeCount
 }) {
   return {
+    accumulatedTokenUsage: messageState.accumulatedTokenUsage,
     completed,
     content: accumulator.totals.response,
     reasoningContent: accumulator.totals.thinking,

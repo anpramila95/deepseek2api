@@ -1,118 +1,91 @@
 import { randomUUID } from "node:crypto";
 
-const TOOL_OPEN_PATTERN = /<tool\b([^>]*)>/gi;
-const TOOL_CLOSE_PATTERN = /<\/tool\s*>/gi;
-const TOOL_ATTR_PATTERN = /(?:^|\s)name\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/i;
+const TOOL_XML_PATTERN = /<(?:tool|tool_call|function_call)\b(?:\s+name\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?[^>]*>([\s\S]*?)<\/(?:tool|tool_call|function_call)\s*>/gi;
+const JSON_BLOCK_PATTERN = /```(?:json)?\s*([\s\S]*?)\s*```/gi;
 
 function toStringSafe(value) {
-  if (typeof value === "string") {
-    return value;
-  }
-
-  if (value === null || value === undefined) {
-    return "";
-  }
-
+  if (typeof value === "string") return value;
+  if (value === null || value === undefined) return "";
   return String(value);
 }
 
-function stripFencedCodeBlocks(text) {
-  return toStringSafe(text).replace(/```[\s\S]*?```/g, " ");
-}
-
-function decodeXmlText(text) {
-  return toStringSafe(text)
-    .trim()
-    .replaceAll("&amp;", "&")
-    .replaceAll("&lt;", "<")
-    .replaceAll("&gt;", ">")
-    .replaceAll("&quot;", "\"")
-    .replaceAll("&#039;", "'")
-    .replaceAll("&#x27;", "'");
-}
-
 function parseJsonObject(text) {
+  if (!text || typeof text !== "string") return null;
+  const trimmed = text.trim();
   try {
-    const value = JSON.parse(text);
+    const value = JSON.parse(trimmed);
     return value && typeof value === "object" && !Array.isArray(value) ? value : null;
   } catch {
+    // Thử trích xuất JSON object nằm giữa dấu { và }
+    const firstBrace = trimmed.indexOf("{");
+    const lastBrace = trimmed.lastIndexOf("}");
+    if (firstBrace >= 0 && lastBrace > firstBrace) {
+      try {
+        const sub = JSON.parse(trimmed.slice(firstBrace, lastBrace + 1));
+        return sub && typeof sub === "object" && !Array.isArray(sub) ? sub : null;
+      } catch {
+        return null;
+      }
+    }
     return null;
   }
-}
-
-function isInsideJsonString(text) {
-  let escaped = false;
-  let insideString = false;
-
-  for (const character of toStringSafe(text)) {
-    if (escaped) {
-      escaped = false;
-      continue;
-    }
-
-    if (character === "\\" && insideString) {
-      escaped = true;
-      continue;
-    }
-
-    if (character === "\"") {
-      insideString = !insideString;
-    }
-  }
-
-  return insideString;
-}
-
-function findToolClose(source, bodyStart) {
-  TOOL_CLOSE_PATTERN.lastIndex = bodyStart;
-  let match;
-
-  while ((match = TOOL_CLOSE_PATTERN.exec(source))) {
-    if (!isInsideJsonString(source.slice(bodyStart, match.index))) {
-      return {
-        end: match.index + match[0].length,
-        index: match.index
-      };
-    }
-  }
-
-  return null;
-}
-
-function findToolName(attrs) {
-  const match = toStringSafe(attrs).match(TOOL_ATTR_PATTERN);
-  return decodeXmlText(match?.[1] ?? match?.[2] ?? match?.[3] ?? "");
 }
 
 function createParsedToolCall(name, input) {
   return {
     id: `call_${randomUUID().replaceAll("-", "")}`,
-    name,
-    argumentsText: JSON.stringify(input),
-    input
+    name: toStringSafe(name).trim(),
+    argumentsText: JSON.stringify(input ?? {}),
+    input: input ?? {}
   };
 }
 
-function parseCompactToolCalls(source) {
+function parseXmlToolCalls(source) {
   const output = [];
-  TOOL_OPEN_PATTERN.lastIndex = 0;
+  TOOL_XML_PATTERN.lastIndex = 0;
   let match;
 
-  while ((match = TOOL_OPEN_PATTERN.exec(source))) {
-    const name = findToolName(match[1]);
-    const bodyStart = match.index + match[0].length;
-    const close = findToolClose(source, bodyStart);
+  while ((match = TOOL_XML_PATTERN.exec(source))) {
+    let name = match[1] ?? match[2] ?? match[3] ?? "";
+    const rawBody = match[4] ?? "";
+    let input = parseJsonObject(rawBody);
 
-    if (!close) {
-      break;
+    // Nếu name không có ở attribute, thử tìm trong body JSON
+    if (!name && input?.name) {
+      name = input.name;
+      input = typeof input.arguments === "object" ? input.arguments : (parseJsonObject(input.arguments) || input.parameters || {});
     }
 
-    const input = parseJsonObject(decodeXmlText(source.slice(bodyStart, close.index)));
     if (name && input) {
       output.push(createParsedToolCall(name, input));
     }
+  }
 
-    TOOL_OPEN_PATTERN.lastIndex = close.end;
+  return output;
+}
+
+function parseJsonToolCalls(source) {
+  const output = [];
+  
+  // 1. Quét JSON bên trong markdown fences
+  JSON_BLOCK_PATTERN.lastIndex = 0;
+  let blockMatch;
+  while ((blockMatch = JSON_BLOCK_PATTERN.exec(source))) {
+    const parsed = parseJsonObject(blockMatch[1]);
+    if (parsed) {
+      if (parsed.name && (parsed.arguments || parsed.parameters || parsed.input)) {
+        const args = typeof parsed.arguments === "object" ? parsed.arguments : (parseJsonObject(parsed.arguments) || parsed.parameters || parsed.input || {});
+        output.push(createParsedToolCall(parsed.name, args));
+      } else if (Array.isArray(parsed.tool_calls)) {
+        for (const call of parsed.tool_calls) {
+          const fn = call.function || call;
+          if (fn?.name) {
+            const args = typeof fn.arguments === "object" ? fn.arguments : (parseJsonObject(fn.arguments) || {});
+            output.push(createParsedToolCall(fn.name, args));
+          }
+        }
+      }
+    }
   }
 
   return output;
@@ -128,10 +101,19 @@ function filterAllowedToolCalls(calls, allowedToolNames) {
 }
 
 export function parseToolCallsFromText(text, allowedToolNames = []) {
-  const source = stripFencedCodeBlocks(text);
-  if (!source.match(/<tool\b/i)) {
-    return [];
+  const source = toStringSafe(text);
+  if (!source) return [];
+
+  // Parse cả XML tags và JSON tool blocks
+  const xmlCalls = parseXmlToolCalls(source);
+  if (xmlCalls.length > 0) {
+    return filterAllowedToolCalls(xmlCalls, allowedToolNames);
   }
 
-  return filterAllowedToolCalls(parseCompactToolCalls(source), allowedToolNames);
+  const jsonCalls = parseJsonToolCalls(source);
+  if (jsonCalls.length > 0) {
+    return filterAllowedToolCalls(jsonCalls, allowedToolNames);
+  }
+
+  return [];
 }

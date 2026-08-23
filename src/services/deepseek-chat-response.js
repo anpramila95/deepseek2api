@@ -1,5 +1,8 @@
 import { consumeDeepseekCompletion } from "./deepseek-completion-stream.js";
-import { startChunkedDeepseekCompletion } from "./deepseek-input-chunking.js";
+import { proxyDeepseekRequest } from "./deepseek-proxy.js";
+
+const COMPLETION_PATH = "/chat/completion";
+const JSON_HEADERS = Object.freeze({ "content-type": "application/json" });
 
 const STREAM_CONTENT_TYPE = "text/event-stream";
 
@@ -57,11 +60,14 @@ export function createChatCompletionRequestBody(body) {
   return Buffer.from(JSON.stringify(sanitizeChatCompletionBody(body)));
 }
 
-export async function startDeepseekChatCompletion({ account, body, inputContentLimit }) {
-  return startChunkedDeepseekCompletion({
+export async function startDeepseekChatCompletion({ account, body }) {
+  const sanitized = sanitizeChatCompletionBody(body);
+  return proxyDeepseekRequest({
     account,
-    body,
-    inputContentLimit
+    method: "POST",
+    path: COMPLETION_PATH,
+    body: Buffer.from(JSON.stringify(sanitized)),
+    headers: JSON_HEADERS
   });
 }
 

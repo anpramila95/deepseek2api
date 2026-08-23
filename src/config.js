@@ -249,13 +249,45 @@ export const config = Object.freeze({
       ?? process.env.SUMEI_CAPTCHA_ASSET_BASE_URL
       ?? "https://castatic.fengkongcloud.cn"
   }),
+  // CAPTCHA configuration
   captcha: Object.freeze({
     yescaptchaEndpoint: process.env.YESCAPTCHA_ENDPOINT ?? "https://api.yescaptcha.com",
     yescaptchaKey: process.env.YESCAPTCHA_KEY ?? "",
     autoSolveEnabled: process.env.CAPTCHA_AUTO_SOLVE === "true",
     visionFallbackEnabled: process.env.CAPTCHA_VISION_FALLBACK !== "false",
     maxRetries: Number(process.env.CAPTCHA_MAX_RETRIES ?? 3),
-    cooldownMs: Number(process.env.CAPTCHA_COOLDOWN_MS ?? 60_000)
+    cooldownMs: Number(process.env.CAPTCHA_COOLDOWN_MS ?? 60_000),
+    // Multi-provider settings
+    defaultProvider: process.env.CAPTCHA_DEFAULT_PROVIDER ?? "yescaptcha",
+    providerOrder: (process.env.CAPTCHA_PROVIDER_ORDER ?? "yescaptcha,2captcha,anticaptcha").split(",").map(s => s.trim()).filter(Boolean),
+    // Individual provider credentials
+    providers: Object.freeze({
+      yescaptcha: {
+        apiKey: process.env.YESCAPTCHA_KEY ?? "",
+        endpoint: process.env.YESCAPTCHA_ENDPOINT ?? "https://api.yescaptcha.com"
+      },
+      "2captcha": {
+        apiKey: process.env.TWOCAPTCHA_KEY ?? "",
+        endpoint: process.env.TWOCAPTCHA_ENDPOINT ?? "https://2captcha.com"
+      },
+      anticaptcha: {
+        apiKey: process.env.ANTICAPTCHA_KEY ?? "",
+        endpoint: process.env.ANTICAPTCHA_ENDPOINT ?? "https://api.anti-captcha.com"
+      },
+      capmonster: {
+        apiKey: process.env.CAPMONSTER_KEY ?? "",
+        endpoint: process.env.CAPMONSTER_ENDPOINT ?? "https://api.capmonster.cloud"
+      },
+      deathbycaptcha: {
+        username: process.env.DEATHBYCAPTCHA_USERNAME ?? "",
+        password: process.env.DEATHBYCAPTCHA_PASSWORD ?? "",
+        endpoint: process.env.DEATHBYCAPTCHA_ENDPOINT ?? "https://api.dbcapi.me/api"
+      },
+      imagetyperz: {
+        apiKey: process.env.IMAGETYPEZ_KEY ?? "",
+        endpoint: process.env.IMAGETYPEZ_ENDPOINT ?? "https://api.imagetyperz.com"
+      }
+    })
   }),
   security: Object.freeze({
     persistAccountCredentials: process.env.PERSIST_ACCOUNT_CREDENTIALS === "true"

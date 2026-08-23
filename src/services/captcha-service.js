@@ -540,11 +540,35 @@ export async function attemptCaptchaAutoSolveForAccount(account, { force = false
 
   const attemptedAccount = markCaptchaAttempt(latestAccount);
   const challenge = attemptedAccount.captchaState ?? {};
+  // Try providers in order of preference
+  const attemptedAccount = { ...account };
   const errors = [];
 
-  if (settings.yescaptchaKey) {
+  // Get list of providers from settings or use defaults
+  const providerManager = getCaptchaProviderManager();
+  await providerManager.initialize();
+    
+  // Determine which providers to try
+  let providersToTry = [];
+    
+  // If settings specify a provider list, use it
+  if (settings.captchaProviders?.order && Array.isArray(settings.captchaProviders.order)) {
+    providersToTry = settings.captchaProviders.order.filter(name => 
+      providerManager.isProviderConfigured(name)
+    );
+  }
+    
+  // If no specific order, try all configured providers
+  if (providersToTry.length === 0) {
+    const configured = providerManager.getConfiguredProviders();
+    providersToTry = configured.map(p => p.name);
+  }
+
+  // Try each provider
+  for (const providerName of providersToTry) {
     try {
-      const solution = await solveWithYesCaptcha(challenge, settings);
+      logInfo({ accountId: account.id, provider: providerName }, 'Attempting CAPTCHA solve with provider');
+      const solution = await solveWithProvider(providerName, challenge, settings);
       const verification = await submitShumeiCoordinates(
         challenge,
         solution.coordinates,
@@ -554,14 +578,15 @@ export async function attemptCaptchaAutoSolveForAccount(account, { force = false
         account: markCaptchaSolved(attemptedAccount, {
           coordinates: solution.coordinates,
           rid: verification.rid,
-          source: "yescaptcha"
+          source: providerName
         }),
         ok: true,
-        source: "yescaptcha"
+        source: providerName
       };
     } catch (error) {
-      errors.push(`YesCaptcha: ${error.message}`);
-      markCaptchaFailed(attemptedAccount, error, "yescaptcha");
+      errors.push(`${providerName}: ${error.message}`);
+      markCaptchaFailed(attemptedAccount, error, providerName);
+      logWarn({ accountId: account.id, provider: providerName, error: error.message }, 'Provider failed, trying next');
     }
   }
 

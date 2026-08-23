@@ -2,7 +2,7 @@ import { readStore, updateStore } from "../storage/store.js";
 
 function normalizeRegistrationSettings(value) {
   return {
-    inviteRequired: Boolean(value?.inviteRequired)
+    inviteRequired: Boolean(value?.inviteRequired),
   };
 }
 
@@ -16,12 +16,12 @@ export function setRegistrationSettings(patch) {
   updateStore((state) => {
     nextSettings = normalizeRegistrationSettings({
       ...state.registration,
-      ...patch
+      ...patch,
     });
 
     return {
       ...state,
-      registration: nextSettings
+      registration: nextSettings,
     };
   });
 

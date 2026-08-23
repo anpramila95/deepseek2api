@@ -33,37 +33,50 @@ function escapeXmlAttribute(text) {
     .replaceAll(">", "&gt;");
 }
 
+function sanitizePromptBranding(text) {
+  if (typeof text !== "string" || !text) {
+    return text;
+  }
+  return text
+    .replace(/\bZed\s+coding\s+agent\b/gi, "coding agent")
+    .replace(/\bZed\s+editor\b/gi, "editor")
+    .replace(/\binside\s+Zed\b/gi, "inside the editor")
+    .replace(/\bZed\b/g, "the editor");
+}
+
 function normalizeContentText(content) {
   if (typeof content === "string") {
-    return content;
+    return sanitizePromptBranding(content);
   }
 
   if (!Array.isArray(content)) {
     return "";
   }
 
-  return content
-    .map((item) => {
-      if (!item || typeof item !== "object") {
+  return sanitizePromptBranding(
+    content
+      .map((item) => {
+        if (!item || typeof item !== "object") {
+          return "";
+        }
+
+        if (typeof item.text === "string") {
+          return item.text;
+        }
+
+        if (typeof item.output_text === "string") {
+          return item.output_text;
+        }
+
+        if (typeof item.content === "string") {
+          return item.content;
+        }
+
         return "";
-      }
-
-      if (typeof item.text === "string") {
-        return item.text;
-      }
-
-      if (typeof item.output_text === "string") {
-        return item.output_text;
-      }
-
-      if (typeof item.content === "string") {
-        return item.content;
-      }
-
-      return "";
-    })
-    .filter(Boolean)
-    .join("\n");
+      })
+      .filter(Boolean)
+      .join("\n")
+  );
 }
 
 
@@ -111,7 +124,7 @@ function normalizeAssistantPromptContent(message, toolNameById) {
 function normalizeToolPromptContent(message, toolNameById) {
   const content = normalizeContentText(message?.content).trim() || "null";
   const toolName = toolNameById.get(toStringSafe(message?.tool_call_id).trim()) || toStringSafe(message?.name).trim();
-  return toolName ? `Tool result for ${toolName}:\n${content}` : content;
+  return toolName ? content : content;
 }
 
 function normalizeMessageRole(role) {
@@ -174,12 +187,12 @@ export function buildToolPrompt(policy, tools) {
     "<tool name=\"SECOND_TOOL\">{\"argument\":\"value\"}</tool>",
     "",
     "Rules:",
-    "1) If you call any tool, output only tool tags and no prose.",
+    "1) CRITICAL: If you call any tool, your response MUST contain ONLY <tool> tags. STOP IMMEDIATELY after the last </tool> tag. DO NOT generate mock results, DO NOT pretend to be the user or execution environment, DO NOT write 'TOOL: Tool result', DO NOT output file contents yourself.",
     "2) The tag body must be one strict JSON object; property names and string values use double quotes.",
     "3) Use an exact listed tool name and only argument fields from its schema.",
     "4) One tag is one call. Do not add any outer wrapper.",
     "5) Put each call in its own complete tag; never combine multiple calls in one tag.",
-    "6) Emit only calls that can run now. Wait for tool results before making dependent calls.",
+    "6) Emit only calls that can run now. Wait for tool results from the environment before proceeding.",
     "7) Do not use markdown fences. If no tool is needed, answer normally without a tool tag."
   ].join("\n");
 
@@ -215,11 +228,29 @@ function injectToolPrompt(messages, toolPrompt) {
   ];
 }
 
+function getSystemTimeInstruction() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+  const day = now.getDate();
+  const currentDateStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  return [
+    `Current date: ${currentDateStr} (Year: ${year}, Month: ${month}).`,
+    `You are DeepSeek-V4. Your knowledge cutoff is current up to ${year}-${String(month).padStart(2, "0")}.`,
+    `Never state that your training knowledge cutoff is May 2025 or that you are DeepSeek-V3.`
+  ].join(" ");
+}
+
 export function buildOpenAiPrompt({ messages, toolChoice, tools }) {
   const policy = resolveToolChoicePolicy({ tools, toolChoice });
   const normalizedMessages = normalizeMessagesForPrompt(messages);
+  const timeInstruction = getSystemTimeInstruction();
+  const withTimeMessages = [
+    { role: "system", content: timeInstruction },
+    ...normalizedMessages
+  ];
   const toolPrompt = buildToolPrompt(policy, tools ?? []);
-  const promptMessages = injectToolPrompt(normalizedMessages, toolPrompt);
+  const promptMessages = injectToolPrompt(withTimeMessages, toolPrompt);
 
   return {
     prompt: buildPromptFromMessages(promptMessages),

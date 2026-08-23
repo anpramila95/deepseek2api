@@ -3,19 +3,25 @@ import { parseToolCallsFromText } from "./openai-tool-parser.js";
 const TOOL_CAPTURE_TAG = "tool";
 
 function findToolOpen(text, offset = 0) {
-  const marker = `<${TOOL_CAPTURE_TAG}`;
-  let index = text.indexOf(marker, offset);
+  // Only XML tool tags are stream delimiters. Raw JSON can be ordinary text
+  // or file content and must not be promoted to a tool call without a name.
+  const patterns = [
+    /<(?:tool|tool_call|function_call)\b/i
+  ];
 
-  while (index >= 0) {
-    const boundary = text[index + marker.length];
-    if (boundary === undefined || /[\s/>]/.test(boundary)) {
-      return index;
+  let minIndex = -1;
+  const searchSlice = text.slice(offset);
+  for (const pattern of patterns) {
+    const match = pattern.exec(searchSlice);
+    if (match) {
+      const actualIndex = offset + match.index;
+      if (minIndex === -1 || actualIndex < minIndex) {
+        minIndex = actualIndex;
+      }
     }
-
-    index = text.indexOf(marker, index + marker.length);
   }
 
-  return -1;
+  return minIndex;
 }
 
 function isInsideJsonString(text) {
@@ -42,23 +48,51 @@ function isInsideJsonString(text) {
 }
 
 function findToolClose(captured, lower, openIndex) {
-  const close = `</${TOOL_CAPTURE_TAG}>`;
-  let closeIndex = lower.indexOf(close, openIndex);
-
-  const bodyStart = lower.indexOf(">", openIndex);
-  if (bodyStart < 0) {
-    return { close, closeIndex: -1 };
+  // 1. Kiểm tra XML close tag
+  const xmlMatch = /<\/(?:tool|tool_call|function_call)\s*>/i.exec(captured.slice(openIndex));
+  if (xmlMatch) {
+    return {
+      close: xmlMatch[0],
+      closeIndex: openIndex + xmlMatch.index
+    };
   }
 
-  while (closeIndex >= 0) {
-    if (!isInsideJsonString(captured.slice(bodyStart + 1, closeIndex))) {
-      return { close, closeIndex };
+  // 2. Kiểm tra JSON object đóng hoàn chỉnh
+  const slice = captured.slice(openIndex);
+  if (slice.startsWith("{")) {
+    let braceCount = 0;
+    let inString = false;
+    let escaped = false;
+    for (let i = 0; i < slice.length; i++) {
+      const char = slice[i];
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+      if (char === "\\") {
+        escaped = true;
+        continue;
+      }
+      if (char === '"') {
+        inString = !inString;
+        continue;
+      }
+      if (!inString) {
+        if (char === "{") braceCount++;
+        else if (char === "}") {
+          braceCount--;
+          if (braceCount === 0) {
+            return {
+              close: "}",
+              closeIndex: openIndex + i
+            };
+          }
+        }
+      }
     }
-
-    closeIndex = lower.indexOf(close, closeIndex + close.length);
   }
 
-  return { close, closeIndex: -1 };
+  return { close: "", closeIndex: -1 };
 }
 
 function isInsideCodeFence(state, prefix) {
@@ -185,9 +219,12 @@ export function createToolSieve(allowedToolNames = []) {
 
         state.capture = "";
         state.capturing = false;
-        pushTextEvent(state, events, consumed.prefix ?? "");
+        if (!consumed.calls?.length) {
+          pushTextEvent(state, events, consumed.prefix ?? "");
+        }
         pushToolCallsEvent(state, events, consumed.calls);
-        state.pending = `${consumed.suffix ?? ""}${state.pending}`;
+        // Drop model-generated prose after a tool block. Tool result belongs to client.
+        state.pending = "";
         continue;
       }
 
@@ -220,9 +257,12 @@ export function createToolSieve(allowedToolNames = []) {
       if (state.capturing) {
         const consumed = consumeCapturedToolBlock(state.capture, state.allowedToolNames);
         if (consumed.ready) {
-          pushTextEvent(state, events, consumed.prefix ?? "");
+          if (!consumed.calls?.length) {
+            pushTextEvent(state, events, consumed.prefix ?? "");
+          }
           pushToolCallsEvent(state, events, consumed.calls);
-          pushTextEvent(state, events, consumed.suffix ?? "");
+          // Never expose fake TOOL results or assistant prose after tool calls.
+          state.pending = "";
         } else {
           pushTextEvent(state, events, state.capture);
         }
