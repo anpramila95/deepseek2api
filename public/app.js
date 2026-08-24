@@ -1,4 +1,4 @@
-import { requestJson } from "/api.js";
+import { proxyJson, requestJson } from "/api.js";
 import { bindActions } from "/actions.js";
 import { INITIAL_STATE, ELEMENT_IDS } from "/app-constants.js";
 import { createAppServices } from "/app-services.js";
@@ -117,6 +117,49 @@ view = createView({
     }
   },
   onSelectSession: (sessionId) => workspace.handleSessionSelect(sessionId),
+  onToggleSelectSession: (sessionIds) => {
+    updateState({ selectedSessionIds: sessionIds });
+    view.renderSessions();
+  },
+  onDeleteSelected: async (selectedIds = state.selectedSessionIds) => {
+    const accountId = state.selectedAccountId || state.accounts[0]?.id || "";
+    if (!selectedIds.length) {
+      setStatus(els["app-status"], "Vui lòng chọn phiên cần xóa.");
+      return;
+    }
+    if (!accountId) {
+      setStatus(els["app-status"], "Chưa chọn tài khoản.");
+      return;
+    }
+
+    setStatus(els["app-status"], "Đang xóa...");
+    try {
+      for (const sessionId of selectedIds) {
+        await proxyJson("/chat_session/delete", {
+          accountId,
+          method: "POST",
+          body: { chat_session_id: sessionId }
+        });
+      }
+      const remaining = state.sessions.filter((session) => !selectedIds.includes(session.id));
+      const removedActiveSession = selectedIds.includes(state.selectedSessionId);
+      updateState({
+        currentMessageId: removedActiveSession ? null : state.currentMessageId,
+        messages: removedActiveSession ? [] : state.messages,
+        sessions: remaining,
+        selectedSessionIds: [],
+        selectedSessionId: remaining.some((session) => session.id === state.selectedSessionId)
+          ? state.selectedSessionId
+          : ""
+      });
+      view.renderSessions();
+      view.renderMessages();
+      view.renderMetrics();
+      setStatus(els["app-status"], "");
+    } catch (error) {
+      setStatus(els["app-status"], error.message);
+    }
+  },
   themeController
 });
 workspace = createSessionWorkspace({

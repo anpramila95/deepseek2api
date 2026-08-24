@@ -72,7 +72,8 @@ async function handleAccountCreation(request, response, session) {
     try {
       const account = await importRawDeepseekAccountForOwner({
         ownerId: session.ownerId,
-        rawInput
+        rawInput,
+        proxy: body.proxy
       });
       console.error(`[API /api/accounts] Account creation via JSON succeeded (account ID: ${account.id})`);
       sendJson(response, 200, { account: toPublicAccount(account) });
@@ -90,7 +91,8 @@ async function handleAccountCreation(request, response, session) {
     const account = await importDeepseekAccountForOwner({
       ownerId: session.ownerId,
       loginValue: body.username,
-      password: body.password
+      password: body.password,
+      proxy: body.proxy
     });
     console.error(`[API /api/accounts] Account creation succeeded for "${maskedUser}" (account ID: ${account.id})`);
     sendJson(response, 200, { account: toPublicAccount(account) });

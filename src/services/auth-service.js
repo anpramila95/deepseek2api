@@ -55,7 +55,7 @@ export function resolveScopedAccount(session, requestedAccountId) {
 export async function checkAndRefreshAccount(account) {
   const accountWithProfile = withResolvedDeepseekClientProfile(account);
   try {
-    await fetchCurrentDeepseekUser(accountWithProfile.token, accountWithProfile.deviceProfile);
+    await fetchCurrentDeepseekUser(accountWithProfile.token, accountWithProfile.deviceProfile, accountWithProfile.proxy);
     return saveAccount({
       ...accountWithProfile,
       status: "online",
@@ -147,9 +147,15 @@ export async function buildDeepseekAccountForOwner({
   loginResult,
   loginValue,
   ownerId,
-  password
+  password,
+  proxy
 }) {
-  const user = loginResult.data.biz_data.user;
+  const user = loginResult.data?.biz_data?.user ?? loginResult.data?.user ?? {};
+  const token = user.token || user.sso_token || loginResult.data?.biz_data?.token || loginResult.data?.token || "";
+  console.error(`[Account Import] Token received: ${token ? "yes" : "no"}`);
+  if (!token) {
+    throw new Error("DeepSeek login succeeded but response contains no token");
+  }
   const emailMasked = maskIdentifier(user.email ?? loginValue);
   const mobileMasked = maskIdentifier(user.mobile_number ?? "");
   const loginValueMasked = maskIdentifier(loginValue);
@@ -168,12 +174,13 @@ export async function buildDeepseekAccountForOwner({
     ownerId,
     deepseekUserId: user.id,
     ...credentialPatch,
+    proxy: typeof proxy === "string" ? proxy.trim() : "",
     loginValueMasked,
     deviceId: resolvedProfile.loginDeviceId,
     loginDeviceId: resolvedProfile.loginDeviceId,
     clientDid: resolvedProfile.clientDid,
     deviceProfile: resolvedProfile,
-    token: user.token,
+    token,
     displayName: resolveAccountLabel({ emailMasked, loginValue: loginValueMasked, mobileMasked }),
     emailMasked,
     mobileMasked,

@@ -33,7 +33,7 @@ function parseJsonObject(text) {
 
 function normalizeDsmlToolTags(text) {
   return toStringSafe(text)
-    .replace(/<\|\s*DSML\s*\|>\s*name\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))\s*>/gi, (_match, doubleName, singleName, bareName) => {
+    .replace(/<\|\s*DSML\s*\|>\s*(?:tool\s+)?name\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))\s*>/gi, (_match, doubleName, singleName, bareName) => {
       const name = doubleName ?? singleName ?? bareName ?? "";
       return `<tool name="${name}">`;
     })

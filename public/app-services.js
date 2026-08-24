@@ -103,11 +103,12 @@ export function createAppServices(options) {
     await loadSessions();
   }
 
-  async function addAccount({ password, username, rawJson }) {
+  async function addAccount({ password, username, rawJson, proxy }) {
     const payload = await postJson("/api/accounts", {
       username,
       password,
-      rawJson
+      rawJson,
+      proxy
     });
 
     if (els["account-password"]) els["account-password"].value = "";

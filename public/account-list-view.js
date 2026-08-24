@@ -126,7 +126,7 @@ function renderAccountItem(account, options) {
           <strong>${escapeHtml(resolveAccountLabel(account))}</strong>
         </div>
         <span class="account-meta">${escapeHtml(meta)}</span>
-        <span class="account-meta">Trạng thái: ${escapeHtml(health.label)} · Tối ưu dữ liệu: ${account.dataOptimizationDisabled ? "Đã tắt" : "Chưa xác nhận"} · Settings: ${account.settingsReported ? "Đã báo cáo" : "Chưa báo cáo"} · Cập nhật: ${escapeHtml(formatDateTime(account.updatedAt))}</span>
+        <span class="account-meta">Trạng thái: ${escapeHtml(health.label)} · Proxy: ${account.proxyConfigured ? "Đã gắn" : "Không dùng"} · Tối ưu dữ liệu: ${account.dataOptimizationDisabled ? "Đã tắt" : "Chưa xác nhận"} · Settings: ${account.settingsReported ? "Đã báo cáo" : "Chưa báo cáo"} · Cập nhật: ${escapeHtml(formatDateTime(account.updatedAt))}</span>
       </div>
       <div class="inline-actions account-actions">
         <span class="${escapeHtml(statusBadge.className)}">${escapeHtml(statusBadge.text)}</span>

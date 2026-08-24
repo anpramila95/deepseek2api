@@ -137,8 +137,10 @@ export function createView(options) {
     onDeleteAccount,
     onDeleteDraftFile,
     onDeleteKey,
+    onDeleteSelected,
     onToggleKeyToolCalls,
     onSelectSession,
+    onToggleSelectSession,
     themeController
   } = options;
   const currentState = () => getState();
@@ -167,8 +169,24 @@ export function createView(options) {
     const state = currentState();
     renderSessionList({
       container: els.sessions,
+      onDeleteSelected,
       onSelect: onSelectSession,
+      onSelectAll: () => {
+        const sessions = currentState().sessions;
+        const allSelected = sessions.length > 0 && sessions.every((session) => state.selectedSessionIds.includes(session.id));
+        onToggleSelectSession(allSelected ? [] : sessions.map((session) => session.id));
+      },
+      onToggleSelect: (sessionId) => {
+        const selected = new Set(currentState().selectedSessionIds);
+        if (selected.has(sessionId)) {
+          selected.delete(sessionId);
+        } else {
+          selected.add(sessionId);
+        }
+        onToggleSelectSession([...selected]);
+      },
       selectedSessionId: state.selectedSessionId,
+      selectedSessionIds: state.selectedSessionIds,
       sessions: state.sessions
     });
   }

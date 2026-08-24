@@ -2,6 +2,7 @@ import { config, resolveDeepseekApiPath } from "../config.js";
 import { createSafeUpstreamError } from "../utils/privacy.js";
 import { solvePowChallenge } from "./pow-solver.js";
 import { createBaseHeaders, refreshAccountToken } from "./deepseek-auth.js";
+import { resolveProxyDispatcher } from "./proxy-dispatcher.js";
 import {
   classifyProtocolResponse,
   createProtocolRequestContext,
@@ -56,6 +57,7 @@ async function fetchPowChallenge(account, path) {
         requestContext.profile,
       ),
       body: JSON.stringify({ target_path: path }),
+      dispatcher: resolveProxyDispatcher(account?.proxy),
     },
   );
 
@@ -266,6 +268,7 @@ async function performRequest({
   const response = await fetch(buildTargetUrl(targetPath, query), {
     method,
     headers: finalHeaders,
+    dispatcher: resolveProxyDispatcher(account?.proxy),
     body: attachShumeiVerificationToBody({
       account,
       body,

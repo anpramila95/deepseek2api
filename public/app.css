@@ -979,6 +979,55 @@ body.sidebar-collapsed #refresh-sessions {
   color: var(--accent-ink);
 }
 
+.session-row {
+  position: relative;
+}
+
+.session-row .session-item {
+  padding-left: 36px;
+}
+
+.session-checkbox {
+  align-items: center;
+  display: flex;
+  height: 100%;
+  left: 0;
+  padding-left: 8px;
+  position: absolute;
+  top: 0;
+  z-index: 1;
+}
+
+.session-checkbox input {
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.session-row.selected .session-item {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.session-toolbar {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.session-select-all {
+  align-items: center;
+  display: flex;
+  font-size: 0.75rem;
+  gap: 6px;
+}
+
+.session-select-all input {
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
 .session-item-title {
   font-size: 0.8rem;
   font-weight: 600;

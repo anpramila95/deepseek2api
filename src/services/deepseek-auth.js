@@ -1,3 +1,4 @@
+
 import { config, resolveDeepseekApiPath } from "../config.js";
 import { createSafeUpstreamError, maskIdentifier } from "../utils/privacy.js";
 import { saveAccount } from "./account-service.js";
@@ -9,7 +10,9 @@ import {
 import { createProtocolRequestContext } from "./deepseek-protocol.js";
 import { reportClientSettingsForAccount } from "./deepseek-settings.js";
 import { solveWaf } from "./waf-solver.js";
+import fs from "fs";
 
+import { resolveProxyDispatcher } from "./proxy-dispatcher.js";
 function isEmail(loginValue) {
   return String(loginValue ?? "").includes("@");
 }
@@ -37,7 +40,7 @@ function buildLoginPayload(loginValue, password, profile) {
   };
 }
 
-export async function loginToDeepseek({ loginValue, password, deviceId, deviceProfile }) {
+export async function loginToDeepseek({ loginValue, password, deviceId, deviceProfile, proxy }) {
   const profile = resolveDeepseekClientProfile(deviceProfile ?? { deviceId });
   const maskedUser = maskIdentifier(loginValue);
   console.error(`[DeepSeek Auth] Resolving profile (user: "${maskedUser}", deviceId: ${profile.loginDeviceId}, OS: ${profile.os})`);
@@ -71,7 +74,8 @@ export async function loginToDeepseek({ loginValue, password, deviceId, devicePr
   let response = await fetch(targetUrl, {
     method: "POST",
     headers: createBaseHeaders("", extraHeaders, profile),
-    body: JSON.stringify(buildLoginPayload(loginValue, password, profile))
+    body: JSON.stringify(buildLoginPayload(loginValue, password, profile)),
+    dispatcher: resolveProxyDispatcher(proxy)
   });
 
   let wafAction = response.headers.get("x-amzn-waf-action");
@@ -116,10 +120,11 @@ export async function loginToDeepseek({ loginValue, password, deviceId, devicePr
   }
 
   console.error(`[DeepSeek Auth] Login successful for user "${maskedUser}"`);
+  fs.promises.writeFile("deepseek-auth-result.json", JSON.stringify(result, null, 2));
   return result;
 }
 
-export async function fetchCurrentDeepseekUser(token, profileSource = {}) {
+export async function fetchCurrentDeepseekUser(token, profileSource = {}, proxy) {
   const profile = resolveDeepseekClientProfile(profileSource);
   const requestContext = createProtocolRequestContext(profile, "/users/current", { method: "GET" });
   const targetUrl = `${config.deepseekBaseUrl}${resolveDeepseekApiPath("/users/current")}`;
@@ -128,7 +133,8 @@ export async function fetchCurrentDeepseekUser(token, profileSource = {}) {
     method: "GET",
     headers: createBaseHeaders(token, {
       ...requestContext.headers
-    }, profile)
+    }, profile),
+    dispatcher: resolveProxyDispatcher(proxy)
   });
 
   let responseText = "";
@@ -167,7 +173,8 @@ export async function refreshAccountToken(account) {
   const loginResult = await loginToDeepseek({
     loginValue: accountWithProfile.loginValue,
     password: accountWithProfile.password,
-    deviceProfile: accountWithProfile.deviceProfile
+    deviceProfile: accountWithProfile.deviceProfile,
+    proxy: accountWithProfile.proxy
   });
 
   const user = loginResult.data.biz_data.user;

@@ -7,7 +7,7 @@ function findToolOpen(text, offset = 0) {
   // or file content and must not be promoted to a tool call without a name.
   const patterns = [
     /<(?:tool|tool_call|function_call|tool_result)\b/i,
-    /<\|\s*DSML\s*\|>\s*name\s*=/i
+    /<\|\s*DSML\s*\|>\s*(?:tool\s+)?name\s*=/i
   ];
 
   let minIndex = -1;

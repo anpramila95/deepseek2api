@@ -1,0 +1,30 @@
+{
+  "code": 0,
+  "msg": "",
+  "data": {
+    "biz_code": 0,
+    "biz_msg": "",
+    "biz_data": {
+      "code": 0,
+      "msg": "",
+      "user": {
+        "id": "f0094e8f-db69-4e9d-8208-367e5556f764",
+        "token": "flBs7zFg7GD0p1tAvjadCsD1YeU/oejMrukexnUihukQKY0ZmteM1mvYNv0LE6Wk",
+        "email": "sinht*********2028@gmail.com",
+        "mobile_number": "",
+        "area_code": "",
+        "status": 0,
+        "id_profile": null,
+        "id_profiles": [],
+        "chat": {
+          "is_muted": 0,
+          "mute_until": null
+        },
+        "has_legacy_chat_history": false,
+        "need_birthday": false,
+        "minor_mode_status": "NONE",
+        "is_mainland": false
+      }
+    }
+  }
+}

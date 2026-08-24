@@ -27,6 +27,7 @@ export function toPublicAccount(account) {
     settingsReported: Boolean(account.settingsReported),
     lastSettingsReport: account.lastSettingsReport ?? null,
     captchaState: account.captchaState ?? null,
+    proxyConfigured: Boolean(account.proxy),
     updatedAt: account.updatedAt
   };
 }

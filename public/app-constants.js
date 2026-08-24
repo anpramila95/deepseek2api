@@ -30,6 +30,7 @@ export const INITIAL_STATE = Object.freeze({
   },
   selectedAccountId: "",
   selectedSessionId: "",
+  selectedSessionIds: [],
   currentMessageId: null,
   sessions: [],
   messages: [],
@@ -41,7 +42,7 @@ export const INITIAL_STATE = Object.freeze({
 });
 
 export const ELEMENT_IDS = [
-  "account-form", "account-list", "account-password", "account-raw-json", "account-select", "account-status", "account-username",
+  "account-form", "account-list", "account-password", "account-proxy", "account-proxy-json", "account-raw-json", "account-select", "account-status", "account-username",
   "check-accounts-button",
   "active-theme-label", "admin-invite-form", "admin-invite-count", "admin-invite-list",
   "admin-invite-status", "admin-register-hint", "admin-registration-form", "admin-registration-status",

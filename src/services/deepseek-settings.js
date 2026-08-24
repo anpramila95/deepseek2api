@@ -2,6 +2,7 @@ import { config, resolveDeepseekApiPath } from "../config.js";
 import { createSafeUpstreamError, redactSensitiveText } from "../utils/privacy.js";
 import { saveAccount } from "./account-service.js";
 import { createDeepseekClientHeaders, resolveDeepseekClientProfile } from "./deepseek-device.js";
+import { resolveProxyDispatcher } from "./proxy-dispatcher.js";
 import { createProtocolRequestContext } from "./deepseek-protocol.js";
 
 const SETTINGS_SCOPES = Object.freeze(["main", "model", "web_upgrade", "banner"]);
@@ -45,7 +46,8 @@ async function fetchScopeSettings(account, scope) {
     headers: createSettingsHeaders(account, {
       ...requestContext.headers,
       accept: "application/json"
-    })
+    }),
+    dispatcher: resolveProxyDispatcher(account.proxy)
   });
 
   let payload;
@@ -81,7 +83,8 @@ async function reportSettings(account, settingsIds) {
       settings_ids: [...settingsIds],
       did: createReportDid(account),
       sso_id: account.ssoId || account.deepseekUserId || ""
-    })
+    }),
+    dispatcher: resolveProxyDispatcher(account.proxy)
   });
   const payload = await response.json().catch(() => ({}));
 
@@ -146,7 +149,8 @@ export async function disableDataOptimizationForAccount(account) {
         ...requestContext.headers,
         "content-type": "application/json"
       }),
-      body: JSON.stringify({ training_allowed: false })
+      body: JSON.stringify({ training_allowed: false }),
+      dispatcher: resolveProxyDispatcher(account.proxy)
     });
   } catch (error) {
     throw createStatusError(502, `Failed to disable DeepSeek data optimization: ${error.message}`);

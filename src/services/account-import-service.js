@@ -14,7 +14,8 @@ export async function importDeepseekAccountForOwner({
   deviceProfile,
   loginValue,
   ownerId,
-  password
+  password,
+  proxy
 }) {
   const maskedUser = maskIdentifier(loginValue);
   console.error(`[Account Import] Step 1/4: Starting account import for user "${maskedUser}" (owner: ${ownerId})`);
@@ -25,14 +26,16 @@ export async function importDeepseekAccountForOwner({
   const loginResult = await loginToDeepseek({
     loginValue,
     password,
-    deviceProfile: resolvedProfile
+    deviceProfile: resolvedProfile,
+    proxy
   });
 
   console.error(`[Account Import] Step 3/4: DeepSeek login successful. Building account data...`);
-  const pendingAccount = buildDeepseekAccountForOwner({
+  const pendingAccount = await buildDeepseekAccountForOwner({
     ownerId,
     loginValue,
     password,
+    proxy,
     deviceProfile: resolvedProfile,
     loginResult
   });
@@ -54,7 +57,7 @@ export async function importDeepseekAccountForOwner({
   return finalAccount;
 }
 
-export async function importRawDeepseekAccountForOwner({ ownerId, rawInput }) {
+export async function importRawDeepseekAccountForOwner({ ownerId, rawInput, proxy }) {
   let parsed;
   const trimmedInput = String(rawInput ?? "").trim();
 
@@ -84,6 +87,7 @@ export async function importRawDeepseekAccountForOwner({ ownerId, rawInput }) {
     throw new Error("Dữ liệu JSON không đúng định dạng tài khoản.");
   }
 
+  proxy = proxy || parsed.proxy || parsed.proxyUrl || "";
   const token = (parsed.token || parsed.user?.token || parsed.biz_data?.user?.token || "").replace(/^Bearer\s+/i, "").trim();
   if (!token) {
     throw new Error("Không tìm thấy 'token' trong dữ liệu. Vui lòng cung cấp JSON hoặc Token hợp lệ.");
@@ -97,7 +101,7 @@ export async function importRawDeepseekAccountForOwner({ ownerId, rawInput }) {
 
   let user = null;
   try {
-    user = await fetchCurrentDeepseekUser(token, resolvedProfile);
+    user = await fetchCurrentDeepseekUser(token, resolvedProfile, proxy);
     console.error(`[Account Import JSON] Verified token with DeepSeek. User ID: ${user.id}`);
   } catch (err) {
     console.error(`[Account Import JSON] Verification via /users/current skipped (${err.message}). Using JSON fields.`);
@@ -124,10 +128,11 @@ export async function importRawDeepseekAccountForOwner({ ownerId, rawInput }) {
     }
   };
 
-  const pendingAccount = buildDeepseekAccountForOwner({
+  const pendingAccount = await buildDeepseekAccountForOwner({
     ownerId,
     loginValue: loginValue || user.email || "JSON_User",
     password,
+    proxy,
     deviceProfile: resolvedProfile,
     loginResult
   });

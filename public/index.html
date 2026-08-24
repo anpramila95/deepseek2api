@@ -250,10 +250,12 @@
                       <div id="import-pane-form" class="form-grid">
                         <label class="input-group"><span>Tài khoản</span><input id="account-username" placeholder="Số điện thoại / Email" autocomplete="username"></label>
                         <label class="input-group"><span>Mật khẩu</span><input id="account-password" type="password" placeholder="Nhập mật khẩu" autocomplete="current-password"></label>
+                        <label class="input-group"><span>Proxy (tuỳ chọn)</span><input id="account-proxy" placeholder="http://user:pass@host:port" autocomplete="off"></label>
                         <button type="submit" class="button-primary" data-ripple><span>Liên kết</span><i data-lucide="link"></i></button>
                       </div>
                       <div id="import-pane-json" class="form-grid-json hidden">
-                        <label class="input-group wide-field"><span>Dữ liệu JSON hoặc Bearer Token</span><textarea id="account-raw-json" rows="2" placeholder='Dán chuỗi Token hoặc JSON tài khoản (Ví dụ: {"token": "..."} hoặc eyJhbGci...)'></textarea></label>
+                        <label class="input-group"><span>Proxy (tuỳ chọn)</span><input id="account-proxy-json" placeholder="http://user:pass@host:port" autocomplete="off"></label>
+                                                <label class="input-group wide-field"><span>Dữ liệu JSON hoặc Bearer Token</span><textarea id="account-raw-json" rows="2" placeholder='Dán chuỗi Token hoặc JSON tài khoản (Ví dụ: {"token": "..."} hoặc eyJhbGci...)'></textarea></label>
                         <button type="submit" class="button-primary" data-ripple><span>Liên kết</span><i data-lucide="link"></i></button>
                       </div>
                     </form>

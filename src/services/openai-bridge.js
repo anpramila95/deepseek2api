@@ -234,12 +234,25 @@ function isToolTranscript(text) {
   return /(?:^|\n)\s*(?:TOOL\s*:|<tool_result\b|tool_call_id\s*:|tool_name\s*:)/i.test(String(text ?? ""));
 }
 
-function safeAssistantText(text, sawToolCall) {
-  const value = String(text ?? "");
-  if (sawToolCall || isToolTranscript(value)) {
-    return "";
-  }
-  return value;
+function createAssistantTextFilter() {
+  let suppressingTranscript = false;
+
+  return {
+    filter(text, sawToolCall) {
+      const value = String(text ?? "");
+      if (sawToolCall || suppressingTranscript) {
+        suppressingTranscript = true;
+        return "";
+      }
+
+      if (isToolTranscript(value)) {
+        suppressingTranscript = true;
+        return "";
+      }
+
+      return value;
+    }
+  };
 }
 
 function writeSseHeartbeat(response) {
@@ -352,6 +365,8 @@ export async function streamOpenAiResponse(options) {
       role: "assistant",
     }),
   );
+  const assistantTextFilter = createAssistantTextFilter();
+
   const emitToolCalls = (calls) => {
     if (!calls.length) {
       return;
@@ -420,7 +435,7 @@ export async function streamOpenAiResponse(options) {
       parsed.toolCalls,
     );
 
-    const safeContent = safeAssistantText(parsed.content, parsed.toolCalls.length > 0);
+    const safeContent = assistantTextFilter.filter(parsed.content, parsed.toolCalls.length > 0);
     if (safeContent) {
       writeSseChunk(
         response,
@@ -506,7 +521,7 @@ export async function streamOpenAiResponse(options) {
                 return;
               }
 
-              const safeText = safeAssistantText(event.text, sawToolCall);
+              const safeText = assistantTextFilter.filter(event.text, sawToolCall);
               if (safeText) {
                 writeSseChunk(
                   response,
@@ -535,7 +550,7 @@ export async function streamOpenAiResponse(options) {
           return;
         }
 
-        const safeText = safeAssistantText(event.text, sawToolCall);
+        const safeText = assistantTextFilter.filter(event.text, sawToolCall);
         if (safeText) {
           writeSseChunk(
             response,

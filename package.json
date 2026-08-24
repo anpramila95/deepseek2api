@@ -10,6 +10,7 @@
     "test": "node --test"
   },
   "dependencies": {
-    "bcrypt": "^6.0.0"
+    "bcrypt": "^6.0.0",
+    "undici": "^6.28.0"
   }
 }

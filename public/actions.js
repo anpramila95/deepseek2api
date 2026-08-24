@@ -72,16 +72,20 @@ function bindWorkspaceActions({
     const username = els["account-username"]?.value.trim() ?? "";
     const password = els["account-password"]?.value ?? "";
     const rawJson = els["account-raw-json"]?.value.trim() ?? "";
+        const proxy = els["account-proxy"]?.value.trim() || els["account-proxy-json"]?.value.trim() || "";
 
     try {
       await onAddAccount({
         password,
         username,
-        rawJson
+        rawJson,
+        proxy
       });
       if (els["account-username"]) els["account-username"].value = "";
       if (els["account-password"]) els["account-password"].value = "";
       if (els["account-raw-json"]) els["account-raw-json"].value = "";
+            if (els["account-proxy"]) els["account-proxy"].value = "";
+                  if (els["account-proxy-json"]) els["account-proxy-json"].value = "";
       setStatus(els["account-status"], "Đã liên kết.");
     } catch (error) {
       setStatus(els["account-status"], error.message);
