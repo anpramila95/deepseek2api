@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepSeek2API - Đăng nhập</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 48px 40px;
+            width: 100%;
+            max-width: 420px;
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .logo h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1a1a2e;
+            letter-spacing: -0.5px;
+        }
+
+        .logo span {
+            color: #764ba2;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 4px;
+            background: #f0f2f5;
+            border-radius: 12px;
+            padding: 4px;
+            margin-bottom: 32px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            background: transparent;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #666;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn.active {
+            background: white;
+            color: #764ba2;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .tab-btn:hover:not(.active) {
+            color: #333;
+        }
+
+        .form-container {
+            display: block;
+        }
+
+        .form-container.hidden {
+            display: none;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 6px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.2s;
+            background: #fafafa;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #764ba2;
+            background: white;
+        }
+
+        .form-group input::placeholder {
+            color: #aaa;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.1s, box-shadow 0.2s;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 24px rgba(118, 75, 162, 0.4);
+        }
+
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .message {
+            margin-top: 16px;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .message.error {
+            display: block;
+            background: #fee;
+            color: #c33;
+            border: 1px solid #fcc;
+        }
+
+        .message.success {
+            display: block;
+            background: #efe;
+            color: #3a3;
+            border: 1px solid #cfc;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 24px;
+            font-size: 13px;
+            color: #888;
+        }
+
+        .footer a {
+            color: #764ba2;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <h1>DeepSeek<span>2API</span></h1>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="login" id="tabLogin">Đăng nhập</button>
+            <button class="tab-btn" data-tab="register" id="tabRegister">Đăng ký</button>
+        </div>
+
+        <!-- Form Đăng nhập -->
+        <div id="loginForm" class="form-container">
+            <form id="loginFormElement">
+                <div class="form-group">
+                    <label for="loginUsername">Tên đăng nhập</label>
+                    <input type="text" id="loginUsername" placeholder="Nhập tên đăng nhập" required autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Mật khẩu</label>
+                    <input type="password" id="loginPassword" placeholder="Nhập mật khẩu" required autocomplete="current-password">
+                </div>
+                <button type="submit" class="submit-btn" id="loginBtn">Đăng nhập</button>
+                <div id="loginMessage" class="message"></div>
+            </form>
+        </div>
+
+        <!-- Form Đăng ký -->
+        <div id="registerForm" class="form-container hidden">
+            <form id="registerFormElement">
+                <div class="form-group">
+                    <label for="registerUsername">Tên đăng nhập</label>
+                    <input type="text" id="registerUsername" placeholder="Tối thiểu 3 ký tự" required autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label for="registerPassword">Mật khẩu</label>
+                    <input type="password" id="registerPassword" placeholder="Tối thiểu 6 ký tự" required autocomplete="new-password">
+                </div>
+                <button type="submit" class="submit-btn" id="registerBtn">Đăng ký</button>
+                <div id="registerMessage" class="message"></div>
+            </form>
+        </div>
+
+        <div class="footer">
+            Powered by <a href="#">DeepSeek2API</a>
+        </div>
+    </div>
+
+    <script>
+        // Tab switching
+        const tabLogin = document.getElementById('tabLogin');
+        const tabRegister = document.getElementById('tabRegister');
+        const loginForm = document.getElementById('loginForm');
+        const registerForm = document.getElementById('registerForm');
+
+        function switchTab(tab) {
+            tabLogin.classList.toggle('active', tab === 'login');
+            tabRegister.classList.toggle('active', tab === 'register');
+            loginForm.classList.toggle('hidden', tab !== 'login');
+            registerForm.classList.toggle('hidden', tab !== 'register');
+            // Clear messages
+            document.getElementById('loginMessage').className = 'message';
+            document.getElementById('registerMessage').className = 'message';
+        }
+
+        tabLogin.addEventListener('click', () => switchTab('login'));
+        tabRegister.addEventListener('click', () => switchTab('register'));
+
+        // Helper: show message
+        function showMessage(element, text, type = 'error') {
+            element.textContent = text;
+            element.className = `message ${type}`;
+        }
+
+        // Helper: set loading state
+        function setLoading(button, loading) {
+            if (loading) {
+                button.disabled = true;
+                button.innerHTML = '<span class="loading-spinner"></span> Đang xử lý...';
+            } else {
+                button.disabled = false;
+                button.textContent = button.dataset.originalText || button.textContent;
+            }
+        }
+
+        // Store original button texts
+        document.getElementById('loginBtn').dataset.originalText = 'Đăng nhập';
+        document.getElementById('registerBtn').dataset.originalText = 'Đăng ký';
+
+        // Login
+        document.getElementById('loginFormElement').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('loginUsername').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            const messageEl = document.getElementById('loginMessage');
+            const btn = document.getElementById('loginBtn');
+
+            if (!username || !password) {
+                showMessage(messageEl, 'Vui lòng điền đầy đủ thông tin.');
+                return;
+            }
+
+            setLoading(btn, true);
+            showMessage(messageEl, '');
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Đăng nhập thất bại');
+                }
+
+                showMessage(messageEl, '✅ Đăng nhập thành công! Đang chuyển hướng...', 'success');
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 800);
+            } catch (error) {
+                showMessage(messageEl, '❌ ' + error.message);
+            } finally {
+                setLoading(btn, false);
+            }
+        });
+
+        // Register
+        document.getElementById('registerFormElement').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('registerUsername').value.trim();
+            const password = document.getElementById('registerPassword').value;
+            const messageEl = document.getElementById('registerMessage');
+            const btn = document.getElementById('registerBtn');
+
+            if (!username || !password) {
+                showMessage(messageEl, 'Vui lòng điền đầy đủ thông tin.');
+                return;
+            }
+
+            if (username.length < 3) {
+                showMessage(messageEl, 'Tên đăng nhập tối thiểu 3 ký tự.');
+                return;
+            }
+
+            if (password.length < 6) {
+                showMessage(messageEl, 'Mật khẩu tối thiểu 6 ký tự.');
+                return;
+            }
+
+            setLoading(btn, true);
+            showMessage(messageEl, '');
+
+            try {
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Đăng ký thất bại');
+                }
+
+                showMessage(messageEl, '✅ Đăng ký thành công! Đang chuyển hướng...', 'success');
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 800);
+            } catch (error) {
+                showMessage(messageEl, '❌ ' + error.message);
+            } finally {
+                setLoading(btn, false);
+            }
+        });
+
+        // Enter key support: switch to login tab if on register and vice versa? No, just submit.
+        // Auto-focus first input
+        document.getElementById('loginUsername').focus();
+    </script>
+</body>
+</html>

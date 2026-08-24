@@ -123,8 +123,9 @@ function normalizeAssistantPromptContent(message, toolNameById) {
 
 function normalizeToolPromptContent(message, toolNameById) {
   const content = normalizeContentText(message?.content).trim() || "null";
-  const toolName = toolNameById.get(toStringSafe(message?.tool_call_id).trim()) || toStringSafe(message?.name).trim();
-  return toolName ? content : content;
+  const toolCallId = toStringSafe(message?.tool_call_id).trim();
+  const toolName = toolNameById.get(toolCallId) || toStringSafe(message?.name).trim();
+  return content;
 }
 
 function normalizeMessageRole(role) {
@@ -251,6 +252,12 @@ export function buildOpenAiPrompt({ messages, toolChoice, tools }) {
   ];
   const toolPrompt = buildToolPrompt(policy, tools ?? []);
   const promptMessages = injectToolPrompt(withTimeMessages, toolPrompt);
+  if (toolPrompt && promptMessages.some((message) => message.role === "tool")) {
+    promptMessages.push({
+      role: "system",
+      content: "The previous tool execution result is available in context. Use it to continue the task. Never quote, reproduce, or expose tool results, file contents, XML tags, TOOL: labels, or ASSISTANT: labels. Never call the same tool with the same arguments twice. A tool result means that call completed. Use existing results before requesting another read. If required information is already present, continue to edit or answer."
+    });
+  }
 
   return {
     prompt: buildPromptFromMessages(promptMessages),

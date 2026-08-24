@@ -6,7 +6,7 @@ function withUpdatedRecord(account, nextFields) {
   return {
     ...account,
     ...nextFields,
-    updatedAt: new Date().toISOString()
+    updatedAt: new Date().toISOString(),
   };
 }
 
@@ -16,10 +16,10 @@ export function listAccounts() {
 
 export function isUsableAccount(account) {
   return Boolean(
-    account?.id
-    && account?.token
-    && account?.status !== "captcha_required"
-    && !account?.captchaState?.triggered
+    account?.id &&
+    account?.token &&
+    account?.status !== "captcha_required" &&
+    !account?.captchaState?.triggered,
   );
 }
 
@@ -32,20 +32,26 @@ export function getAccountById(accountId) {
 }
 
 export function resolveAccountLabel(account) {
-  return [
-    account?.loginValueMasked,
-    account?.displayName,
-    account?.emailMasked,
-    account?.mobileMasked,
-    account?.loginValue ? maskIdentifier(account.loginValue) : "",
-    account?.id
-  ].find(Boolean) ?? "";
+  return (
+    [
+      account?.loginValueMasked,
+      account?.displayName,
+      account?.emailMasked,
+      account?.mobileMasked,
+      account?.loginValue ? maskIdentifier(account.loginValue) : "",
+      account?.id,
+    ].find(Boolean) ?? ""
+  );
 }
 
 export function findAccountForOwner(ownerId, deepseekUserId) {
-  return listAccounts().find(
-    (account) => account.ownerId === ownerId && account.deepseekUserId === deepseekUserId
-  ) ?? null;
+  return (
+    listAccounts().find(
+      (account) =>
+        account.ownerId === ownerId &&
+        account.deepseekUserId === deepseekUserId,
+    ) ?? null
+  );
 }
 
 export function listAccountsForOwner(ownerId) {
@@ -67,14 +73,16 @@ export function saveAccount(accountInput) {
         id: createId(),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        ...accountInput
+        ...accountInput,
       };
 
   updateStore((state) => ({
     ...state,
     accounts: existing
-      ? state.accounts.map((entry) => (entry.id === account.id ? account : entry))
-      : [...state.accounts, account]
+      ? state.accounts.map((entry) =>
+          entry.id === account.id ? account : entry,
+        )
+      : [...state.accounts, account],
   }));
 
   return account;
@@ -92,7 +100,7 @@ export function updateAccountById(accountId, patch) {
 
       nextAccount = withUpdatedRecord(account, patch);
       return nextAccount;
-    })
+    }),
   }));
 
   return nextAccount;
@@ -102,14 +110,15 @@ export function deleteAccountById(accountId) {
   let deletedAccount = null;
 
   updateStore((state) => {
-    deletedAccount = state.accounts.find((account) => account.id === accountId) ?? null;
+    deletedAccount =
+      state.accounts.find((account) => account.id === accountId) ?? null;
     if (!deletedAccount) {
       return state;
     }
 
     return {
       ...state,
-      accounts: state.accounts.filter((account) => account.id !== accountId)
+      accounts: state.accounts.filter((account) => account.id !== accountId),
     };
   });
 

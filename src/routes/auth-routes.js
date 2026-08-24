@@ -17,7 +17,7 @@ function sendSessionPayload(response, session) {
 
 async function handleLoginRequest(request, response) {
   const body = await readJsonRequest(request);
-  const adminSession = loginAsAdmin(body.username, body.password);
+  const adminSession = await loginAsAdmin(body.username, body.password);
 
   if (adminSession) {
     sendSessionPayload(response, adminSession);
@@ -25,7 +25,7 @@ async function handleLoginRequest(request, response) {
   }
 
   try {
-    const localSession = loginAsLocalUser(body.username, body.password);
+    const localSession = await loginAsLocalUser(body.username, body.password);
     if (!localSession) {
       sendError(response, 401, "Invalid username or password");
       return true;

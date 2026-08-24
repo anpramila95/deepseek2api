@@ -1,3 +1,4 @@
+import bcrypt from "bcrypt";
 import { config } from "../config.js";
 import { listAccounts, listAccountsForOwner, resolveAccountLabel, saveAccount } from "./account-service.js";
 import { getIncognitoStateForOwner } from "./incognito-service.js";
@@ -7,6 +8,8 @@ import { authenticateLocalUser, getLocalUserFromSession, registerLocalUser } fro
 import { maskIdentifier } from "../utils/privacy.js";
 import { resolveDeepseekClientProfile, withResolvedDeepseekClientProfile } from "./deepseek-device.js";
 import { fetchCurrentDeepseekUser, refreshAccountToken } from "./deepseek-auth.js";
+
+const BCRYPT_SALT_ROUNDS = 10;
 
 export function resolveSession(request) {
   const cookie = request.cookies?.[config.sessionCookieName];
@@ -97,12 +100,28 @@ export async function checkAccountsForSession(session, accountId = null) {
   return updatedAccounts;
 }
 
-export function loginAsAdmin(username, password) {
+export async function loginAsAdmin(username, password) {
   if (!config.admin.enabled) {
     return null;
   }
 
-  if (username !== config.admin.username || password !== config.admin.password) {
+  if (username !== config.admin.username) {
+    return null;
+  }
+
+  // Admin password can be either a plaintext (fallback) or bcrypt hash
+  const storedPassword = config.admin.password;
+  const isHash = storedPassword.startsWith("$2b$") || storedPassword.startsWith("$2a$") || storedPassword.startsWith("$2y$");
+
+  let isValid = false;
+  if (isHash) {
+    isValid = await bcrypt.compare(password, storedPassword);
+  } else {
+    // Plaintext fallback (deprecated, remove in future)
+    isValid = password === storedPassword;
+  }
+
+  if (!isValid) {
     return null;
   }
 
@@ -122,7 +141,7 @@ function createLocalUserSession(user) {
   });
 }
 
-export function buildDeepseekAccountForOwner({
+export async function buildDeepseekAccountForOwner({
   deviceId,
   deviceProfile,
   loginResult,
@@ -135,9 +154,15 @@ export function buildDeepseekAccountForOwner({
   const mobileMasked = maskIdentifier(user.mobile_number ?? "");
   const loginValueMasked = maskIdentifier(loginValue);
   const resolvedProfile = resolveDeepseekClientProfile(deviceProfile ?? { deviceId });
-  const credentialPatch = config.security.persistAccountCredentials
-    ? { credentialMode: "persistent", loginValue, password }
-    : { credentialMode: "ephemeral", loginValue: loginValueMasked, password: "" };
+
+  let credentialPatch;
+  if (config.security.persistAccountCredentials) {
+    // Hash password before storing
+    const hashedPassword = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
+    credentialPatch = { credentialMode: "persistent", loginValue, password: hashedPassword };
+  } else {
+    credentialPatch = { credentialMode: "ephemeral", loginValue: loginValueMasked, password: "" };
+  }
 
   return {
     ownerId,
@@ -169,17 +194,18 @@ export function buildDeepseekAccountForOwner({
   };
 }
 
-export function saveDeepseekAccountForOwner(options) {
-  return saveAccount(buildDeepseekAccountForOwner(options));
+export async function saveDeepseekAccountForOwner(options) {
+  const account = await buildDeepseekAccountForOwner(options);
+  return saveAccount(account);
 }
 
-export function loginAsLocalUser(username, password) {
-  const user = authenticateLocalUser({ username, password });
+export async function loginAsLocalUser(username, password) {
+  const user = await authenticateLocalUser({ username, password });
   return user ? createLocalUserSession(user) : null;
 }
 
-export function registerLocalUserSession(options) {
-  const user = registerLocalUser(options);
+export async function registerLocalUserSession(options) {
+  const user = await registerLocalUser(options);
   return createLocalUserSession(user);
 }
 

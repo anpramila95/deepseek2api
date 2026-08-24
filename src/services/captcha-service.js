@@ -541,7 +541,6 @@ export async function attemptCaptchaAutoSolveForAccount(account, { force = false
   const attemptedAccount = markCaptchaAttempt(latestAccount);
   const challenge = attemptedAccount.captchaState ?? {};
   // Try providers in order of preference
-  const attemptedAccount = { ...account };
   const errors = [];
 
   // Get list of providers from settings or use defaults

@@ -5,6 +5,7 @@ import { handleApiRequest } from "./routes/api-routes.js";
 import { handleOpenAiRequest } from "./routes/openai-routes.js";
 import { handleProxyRequest } from "./routes/proxy-routes.js";
 import { parseCookies, sendError, serveStaticFile } from "./utils/http.js";
+import { resolveSession } from "./services/auth-service.js";
 
 const server = createServer(async (request, response) => {
   const url = new URL(
@@ -60,7 +61,14 @@ const server = createServer(async (request, response) => {
       return;
     }
 
-    if (!serveStaticFile(request, response, url.pathname)) {
+    // Nếu yêu cầu trang chủ (/), kiểm tra xác thực
+    let pathname = url.pathname;
+    if (pathname === "/" || pathname === "/index.html") {
+      const authenticated = Boolean(resolveSession(request));
+      pathname = authenticated ? "/index.html" : "/guest.html";
+    }
+
+    if (!serveStaticFile(request, response, pathname)) {
       sendError(response, 404, "Page not found");
     }
   } catch (error) {

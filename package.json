@@ -8,5 +8,8 @@
   "scripts": {
     "start": "node src/server.js",
     "test": "node --test"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0"
   }
 }

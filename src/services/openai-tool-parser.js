@@ -31,6 +31,17 @@ function parseJsonObject(text) {
   }
 }
 
+function normalizeDsmlToolTags(text) {
+  return toStringSafe(text)
+    .replace(/<\|\s*DSML\s*\|>\s*name\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))\s*>/gi, (_match, doubleName, singleName, bareName) => {
+      const name = doubleName ?? singleName ?? bareName ?? "";
+      return `<tool name="${name}">`;
+    })
+    .replace(/<\|\s*DSML\s*\|>\s*\/?>/gi, "")
+    .replace(/<\|\s*DSML\s*\|>\s*\/\s*>/gi, "</tool>")
+    .replace(/<\|\s*DSML\s*\|>\s*\|>/gi, "</tool>");
+}
+
 function createParsedToolCall(name, input) {
   return {
     id: `call_${randomUUID().replaceAll("-", "")}`,
@@ -92,16 +103,27 @@ function parseJsonToolCalls(source) {
 }
 
 function filterAllowedToolCalls(calls, allowedToolNames) {
-  if (!allowedToolNames?.length) {
-    return calls;
-  }
+  const allowed = allowedToolNames?.length
+    ? new Set(allowedToolNames.map((name) => toStringSafe(name).trim()).filter(Boolean))
+    : null;
+  const seen = new Set();
 
-  const allowed = new Set(allowedToolNames.map((name) => toStringSafe(name).trim()).filter(Boolean));
-  return calls.filter((call) => allowed.has(call.name));
+  return calls.filter((call) => {
+    if (allowed && !allowed.has(call.name)) {
+      return false;
+    }
+
+    const key = `${call.name}:${call.argumentsText}`;
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
 }
 
 export function parseToolCallsFromText(text, allowedToolNames = []) {
-  const source = toStringSafe(text);
+  const source = normalizeDsmlToolTags(text);
   if (!source) return [];
 
   // Parse cả XML tags và JSON tool blocks

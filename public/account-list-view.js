@@ -26,7 +26,8 @@ function renderAccountMeta(account, isAdmin) {
 
 function renderStatusText(account, selectedAccountId) {
   const isSelected = account.id === selectedAccountId;
-  const isDead = account.status === "offline" || account.status === "captcha_required" || Boolean(account.captchaState?.triggered);
+  const isCaptcha = account.status === "captcha_required" || Boolean(account.captchaState?.triggered);
+  const isDead = account.status === "offline" || isCaptcha;
 
   if (isDead) {
     return { text: "Không hoạt động", className: "chip chip-danger" };
@@ -36,12 +37,12 @@ function renderStatusText(account, selectedAccountId) {
     return { text: "Đang chọn", className: "chip chip-primary" };
   }
 
-  return { text: "Hoạt động", className: "chip" };
+  return { text: "Sẵn sàng", className: "chip chip-success" };
 }
 
 function resolveHealth(account) {
   if (account.captchaState?.triggered || account.status === "captcha_required") {
-    return { className: "danger", label: "Cần xử lý CAPTCHA" };
+    return { className: "danger", label: "Yêu cầu captcha" };
   }
 
   if (!account.status || account.status === "online") {

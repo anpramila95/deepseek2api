@@ -6,7 +6,8 @@ function findToolOpen(text, offset = 0) {
   // Only XML tool tags are stream delimiters. Raw JSON can be ordinary text
   // or file content and must not be promoted to a tool call without a name.
   const patterns = [
-    /<(?:tool|tool_call|function_call)\b/i
+    /<(?:tool|tool_call|function_call|tool_result)\b/i,
+    /<\|\s*DSML\s*\|>\s*name\s*=/i
   ];
 
   let minIndex = -1;
@@ -49,7 +50,7 @@ function isInsideJsonString(text) {
 
 function findToolClose(captured, lower, openIndex) {
   // 1. Kiểm tra XML close tag
-  const xmlMatch = /<\/(?:tool|tool_call|function_call)\s*>/i.exec(captured.slice(openIndex));
+  const xmlMatch = /(?:<\/(?:tool|tool_call|function_call)\s*>|<\|\s*DSML\s*\|>\s*(?:\|>)?)/i.exec(captured.slice(openIndex));
   if (xmlMatch) {
     return {
       close: xmlMatch[0],
@@ -142,6 +143,21 @@ function splitSafeContent(state, text) {
 
 function consumeCapturedToolBlock(captured, allowedToolNames) {
   const lower = captured.toLowerCase();
+  const resultOpen = lower.search(/<tool_result\b[^>]*>/i);
+  if (resultOpen >= 0) {
+    const resultClose = lower.indexOf("</tool_result>", resultOpen);
+    if (resultClose < 0) {
+      return { ready: false };
+    }
+    return {
+      ready: true,
+      prefix: "",
+      calls: [],
+      dropTranscript: true,
+      suffix: captured.slice(resultClose + "</tool_result>".length)
+    };
+  }
+
   const openIndex = findToolOpen(lower);
   if (openIndex < 0) {
     return { ready: true, prefix: captured, calls: [], suffix: "" };
@@ -219,12 +235,12 @@ export function createToolSieve(allowedToolNames = []) {
 
         state.capture = "";
         state.capturing = false;
-        if (!consumed.calls?.length) {
+        if (!consumed.dropTranscript && !consumed.calls?.length) {
           pushTextEvent(state, events, consumed.prefix ?? "");
         }
         pushToolCallsEvent(state, events, consumed.calls);
-        // Drop model-generated prose after a tool block. Tool result belongs to client.
-        state.pending = "";
+        // Drop echoed result, but preserve any following real tool tag.
+        state.pending = consumed.dropTranscript ? (consumed.suffix ?? "") : "";
         continue;
       }
 
@@ -234,7 +250,12 @@ export function createToolSieve(allowedToolNames = []) {
 
       const start = findToolSegmentStart(state, state.pending);
       if (start >= 0) {
-        pushTextEvent(state, events, state.pending.slice(0, start));
+        let prefix = state.pending.slice(0, start);
+        const segment = state.pending.slice(start).toLowerCase();
+        if (segment.startsWith("<tool_result") || segment.startsWith("<tool_result")) {
+          prefix = prefix.replace(/(?:^|\s)tool\s*:\s*$/i, "");
+        }
+        pushTextEvent(state, events, prefix);
         state.capture = state.pending.slice(start);
         state.pending = "";
         state.capturing = true;
@@ -257,12 +278,11 @@ export function createToolSieve(allowedToolNames = []) {
       if (state.capturing) {
         const consumed = consumeCapturedToolBlock(state.capture, state.allowedToolNames);
         if (consumed.ready) {
-          if (!consumed.calls?.length) {
+          if (!consumed.dropTranscript && !consumed.calls?.length) {
             pushTextEvent(state, events, consumed.prefix ?? "");
           }
           pushToolCallsEvent(state, events, consumed.calls);
-          // Never expose fake TOOL results or assistant prose after tool calls.
-          state.pending = "";
+          state.pending = consumed.dropTranscript ? (consumed.suffix ?? "") : "";
         } else {
           pushTextEvent(state, events, state.capture);
         }

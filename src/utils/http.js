@@ -52,16 +52,22 @@ export function parseCookies(request) {
 }
 
 export function setCookie(response, name, value, maxAgeSeconds) {
+  // Chỉ đặt Secure flag khi kết nối qua HTTPS; trên HTTP localhost
+  // trình duyệt sẽ từ chối lưu cookie có Secure, gây mất session.
+  const isHttps =
+    response.req?.socket?.encrypted ||
+    response.req?.headers?.["x-forwarded-proto"] === "https";
+  const secureFlag = isHttps ? "; Secure" : "";
   response.setHeader(
     "set-cookie",
-    `${name}=${encodeURIComponent(value)}; HttpOnly; Path=/; Max-Age=${maxAgeSeconds}; SameSite=Lax`
+    `${name}=${encodeURIComponent(value)}; HttpOnly${secureFlag}; Path=/; Max-Age=${maxAgeSeconds}; SameSite=Strict`
   );
 }
 
 export function clearCookie(response, name) {
   response.setHeader(
     "set-cookie",
-    `${name}=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax`
+    `${name}=; HttpOnly; Path=/; Max-Age=0; SameSite=Strict`
   );
 }
 

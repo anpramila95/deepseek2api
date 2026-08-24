@@ -230,6 +230,18 @@ function writeSseChunk(response, payload) {
   response.write(`data: ${JSON.stringify(payload)}\n\n`);
 }
 
+function isToolTranscript(text) {
+  return /(?:^|\n)\s*(?:TOOL\s*:|<tool_result\b|tool_call_id\s*:|tool_name\s*:)/i.test(String(text ?? ""));
+}
+
+function safeAssistantText(text, sawToolCall) {
+  const value = String(text ?? "");
+  if (sawToolCall || isToolTranscript(value)) {
+    return "";
+  }
+  return value;
+}
+
 function writeSseHeartbeat(response) {
   if (!response.destroyed && !response.writableEnded) {
     response.write(": keep-alive\n\n");
@@ -324,6 +336,7 @@ export async function streamOpenAiResponse(options) {
     : null;
   let toolCallIndex = 0;
   let sawToolCall = false;
+  const emittedToolCalls = new Set();
 
   response.writeHead(200, {
     "cache-control": "no-cache, no-transform",
@@ -344,8 +357,13 @@ export async function streamOpenAiResponse(options) {
       return;
     }
 
-    sawToolCall = true;
     for (const call of calls) {
+      const key = `${call.name}:${call.argumentsText}`;
+      if (emittedToolCalls.has(key)) {
+        continue;
+      }
+      emittedToolCalls.add(key);
+      sawToolCall = true;
       writeSseChunk(
         response,
         buildChunkPayload(completionId, requestOptions.model.id, {
@@ -402,11 +420,12 @@ export async function streamOpenAiResponse(options) {
       parsed.toolCalls,
     );
 
-    if (parsed.content) {
+    const safeContent = safeAssistantText(parsed.content, parsed.toolCalls.length > 0);
+    if (safeContent) {
       writeSseChunk(
         response,
         buildChunkPayload(completionId, requestOptions.model.id, {
-          content: parsed.content,
+          content: safeContent,
         }),
       );
     }
@@ -487,11 +506,12 @@ export async function streamOpenAiResponse(options) {
                 return;
               }
 
-              if (event.text) {
+              const safeText = safeAssistantText(event.text, sawToolCall);
+              if (safeText) {
                 writeSseChunk(
                   response,
                   buildChunkPayload(completionId, requestOptions.model.id, {
-                    content: event.text,
+                    content: safeText,
                   }),
                 );
               }
@@ -515,11 +535,12 @@ export async function streamOpenAiResponse(options) {
           return;
         }
 
-        if (event.text) {
+        const safeText = safeAssistantText(event.text, sawToolCall);
+        if (safeText) {
           writeSseChunk(
             response,
             buildChunkPayload(completionId, requestOptions.model.id, {
-              content: event.text,
+              content: safeText,
             }),
           );
         }
