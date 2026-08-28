@@ -226,37 +226,99 @@ function renderDashboardMetricCards(state) {
     </article>
   `).join("");
 }
-function buildRequestBuckets(logs) {
-  const bucketMs = 60 * 60 * 1000;
+function buildRequestBuckets(logs, timeRange = "6h") {
   const now = Date.now();
-  return Array.from({ length: 6 }, (_, index) => {
-    const start = now - (5 - index) * bucketMs;
+  let count = 6;
+  let bucketMs = 60 * 60 * 1000;
+  let isDaily = false;
+
+  if (timeRange === "24h") {
+    count = 12;
+    bucketMs = 2 * 60 * 60 * 1000;
+  } else if (timeRange === "7d") {
+    count = 7;
+    bucketMs = 24 * 60 * 60 * 1000;
+    isDaily = true;
+  } else if (timeRange === "30d") {
+    count = 15;
+    bucketMs = 2 * 24 * 60 * 60 * 1000;
+    isDaily = true;
+  }
+
+  return Array.from({ length: count }, (_, index) => {
+    const start = now - (count - 1 - index) * bucketMs;
     const end = start + bucketMs;
     const entries = logs.filter((log) => {
       const time = Date.parse(log.at);
       return Number.isFinite(time) && time >= start && time < end;
     });
+
+    const ok = entries.filter((log) => Number(log.status) < 400).length;
+    const error = entries.filter((log) => Number(log.status) >= 400).length;
+    const total = ok + error;
+    const avgDuration = total ? Math.round(entries.reduce((acc, log) => acc + (log.durationMs || 0), 0) / total) : 0;
+
+    let label;
+    if (isDaily) {
+      label = new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit" }).format(new Date(start));
+    } else {
+      label = new Intl.DateTimeFormat("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(start));
+    }
+
     return {
-      label: new Intl.DateTimeFormat("zh-CN", { hour: "2-digit" }).format(new Date(start)),
-      ok: entries.filter((log) => Number(log.status) < 400).length,
-      error: entries.filter((log) => Number(log.status) >= 400).length
+      label,
+      ok,
+      error,
+      total,
+      avgDuration
     };
   });
 }
-function renderRequestChartMarkup(logs) {
-  const buckets = buildRequestBuckets(logs);
-  const max = Math.max(1, ...buckets.map((bucket) => bucket.ok + bucket.error));
+
+function renderRequestChartMarkup(logs, options = {}) {
+  const { timeRange = "6h", model = "all", status = "all" } = options;
+
+  let filtered = logs;
+  if (model && model !== "all") {
+    filtered = filtered.filter((log) => (log.model || "").toLowerCase() === model.toLowerCase());
+  }
+  if (status === "ok") {
+    filtered = filtered.filter((log) => Number(log.status) < 400);
+  } else if (status === "error") {
+    filtered = filtered.filter((log) => Number(log.status) >= 400);
+  }
+
+  const buckets = buildRequestBuckets(filtered, timeRange);
+  const max = Math.max(1, ...buckets.map((bucket) => bucket.total));
+
+  const totalReq = filtered.length;
+  const okReq = filtered.filter((log) => Number(log.status) < 400).length;
+  const errReq = filtered.filter((log) => Number(log.status) >= 400).length;
+  const successRate = totalReq ? ((okReq / totalReq) * 100).toFixed(1) : "100.0";
+  const avgLat = totalReq ? Math.round(filtered.reduce((acc, log) => acc + (log.durationMs || 0), 0) / totalReq) : 0;
 
   return `
+    <div class="trend-stats-summary">
+      <div class="trend-stat-item"><span class="stat-label">Tổng:</span><strong>${totalReq}</strong></div>
+      <div class="trend-stat-item"><span class="stat-label">Thành công:</span><strong class="stat-ok">${okReq} (${successRate}%)</strong></div>
+      <div class="trend-stat-item"><span class="stat-label">Lỗi:</span><strong class="stat-err">${errReq}</strong></div>
+      <div class="trend-stat-item"><span class="stat-label">Độ trễ TB:</span><strong>${avgLat} ms</strong></div>
+      <div class="trend-legend">
+        <span class="legend-dot dot-ok"></span><span>Thành công</span>
+        <span class="legend-dot dot-err"></span><span>Lỗi</span>
+      </div>
+    </div>
     <div class="dashboard-chart-bars">
       ${buckets.map((bucket) => {
-        const total = bucket.ok + bucket.error;
-        const height = Math.max(8, Math.round((total / max) * 100));
+        const height = Math.max(8, Math.round((bucket.total / max) * 100));
+        const okPct = bucket.total ? (bucket.ok / bucket.total) * 100 : 0;
+        const errPct = bucket.total ? (bucket.error / bucket.total) * 100 : 0;
+        const tooltip = `${bucket.label}: ${bucket.total} yêu cầu (${bucket.ok} thành công, ${bucket.error} lỗi)${bucket.avgDuration ? ` - ${bucket.avgDuration}ms` : ""}`;
         return `
-          <div class="chart-bucket">
+          <div class="chart-bucket" title="${escapeHtml(tooltip)}">
             <div class="chart-bar" style="height:${height}%">
-              <span class="chart-bar-ok" style="height:${total ? (bucket.ok / total) * 100 : 0}%"></span>
-              <span class="chart-bar-error" style="height:${total ? (bucket.error / total) * 100 : 0}%"></span>
+              <span class="chart-bar-ok" style="height:${okPct}%"></span>
+              <span class="chart-bar-error" style="height:${errPct}%"></span>
             </div>
             <span>${escapeHtml(bucket.label)}</span>
           </div>
@@ -372,11 +434,25 @@ export function renderRequestLogList({ container, logs }) {
     ? renderRequestLogListMarkup(logs)
     : createEmptyState("Chưa có nhật ký yêu cầu", "Nhật ký sau khi hoàn thành yêu cầu sẽ hiển thị tại đây.");
 }
-export function renderDashboardHome({ containers, state }) {
+export function renderDashboardHome({ containers, state, filters = {} }) {
   containers.healthCards.innerHTML = renderDashboardMetricCards(state);
+
+  if (containers.modelFilter) {
+    const currentSelected = containers.modelFilter.value || "all";
+    const uniqueModels = Array.from(new Set(state.requestLogs.map((l) => l.model).filter(Boolean)));
+    const options = [
+      '<option value="all">Tất cả mô hình</option>',
+      ...uniqueModels.map((m) => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`)
+    ].join("");
+    if (containers.modelFilter.innerHTML !== options) {
+      containers.modelFilter.innerHTML = options;
+      containers.modelFilter.value = currentSelected;
+    }
+  }
+
   containers.requestChart.innerHTML = state.requestLogs.length
-    ? renderRequestChartMarkup(state.requestLogs)
-    : createEmptyState("Chưa có dữ liệu xu hướng", "Xu hướng theo giờ sẽ tạo sau khi có yêu cầu.");
+    ? renderRequestChartMarkup(state.requestLogs, filters)
+    : createEmptyState("Chưa có dữ liệu xu hướng", "Xu hướng yêu cầu sẽ hiển thị sau khi phát sinh yêu cầu.");
   containers.recentLogs.innerHTML = state.requestLogs.length
     ? renderRequestLogListMarkup(state.requestLogs.slice(0, 5))
     : createEmptyState("Chưa có yêu cầu gần đây", "Tóm tắt sẽ hiển thị sau khi hoàn thành yêu cầu.");

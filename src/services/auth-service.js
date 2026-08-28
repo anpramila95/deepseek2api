@@ -1,13 +1,28 @@
 import bcrypt from "bcrypt";
 import { config } from "../config.js";
-import { listAccounts, listAccountsForOwner, resolveAccountLabel, saveAccount } from "./account-service.js";
+import {
+  listAccounts,
+  listAccountsForOwner,
+  resolveAccountLabel,
+  saveAccount,
+} from "./account-service.js";
 import { getIncognitoStateForOwner } from "./incognito-service.js";
 import { isLocalOwnerId, createLocalOwnerId } from "./owner-service.js";
 import { createSession, deleteSession, getSession } from "./session-service.js";
-import { authenticateLocalUser, getLocalUserFromSession, registerLocalUser } from "./user-service.js";
+import {
+  authenticateLocalUser,
+  getLocalUserFromSession,
+  registerLocalUser,
+} from "./user-service.js";
 import { maskIdentifier } from "../utils/privacy.js";
-import { resolveDeepseekClientProfile, withResolvedDeepseekClientProfile } from "./deepseek-device.js";
-import { fetchCurrentDeepseekUser, refreshAccountToken } from "./deepseek-auth.js";
+import {
+  resolveDeepseekClientProfile,
+  withResolvedDeepseekClientProfile,
+} from "./deepseek-device.js";
+import {
+  fetchCurrentDeepseekUser,
+  refreshAccountToken,
+} from "./deepseek-auth.js";
 
 const BCRYPT_SALT_ROUNDS = 10;
 
@@ -18,7 +33,10 @@ export function resolveSession(request) {
     return null;
   }
 
-  if (session.role !== "user" || (!session.userId && !isLocalOwnerId(session.ownerId))) {
+  if (
+    session.role !== "user" ||
+    (!session.userId && !isLocalOwnerId(session.ownerId))
+  ) {
     return session;
   }
 
@@ -32,7 +50,7 @@ export function resolveSession(request) {
     ...session,
     ownerId: createLocalOwnerId(user.id),
     userId: user.id,
-    username: user.username
+    username: user.username,
   };
 }
 
@@ -49,20 +67,30 @@ export function getVisibleAccounts(session) {
 export function resolveScopedAccount(session, requestedAccountId) {
   const visibleAccounts = getVisibleAccounts(session);
   const resolvedAccountId = requestedAccountId ?? visibleAccounts[0]?.id;
-  return visibleAccounts.find((account) => account.id === resolvedAccountId) ?? null;
+  return (
+    visibleAccounts.find((account) => account.id === resolvedAccountId) ?? null
+  );
 }
 
 export async function checkAndRefreshAccount(account) {
   const accountWithProfile = withResolvedDeepseekClientProfile(account);
   try {
-    await fetchCurrentDeepseekUser(accountWithProfile.token, accountWithProfile.deviceProfile, accountWithProfile.proxy);
+    await fetchCurrentDeepseekUser(
+      accountWithProfile.token,
+      accountWithProfile.deviceProfile,
+      accountWithProfile.proxy,
+    );
     return saveAccount({
       ...accountWithProfile,
       status: "online",
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     });
   } catch {
-    if (accountWithProfile.credentialMode === "persistent" && accountWithProfile.loginValue && accountWithProfile.password) {
+    if (
+      accountWithProfile.credentialMode === "persistent" &&
+      accountWithProfile.loginValue &&
+      accountWithProfile.password
+    ) {
       try {
         return await refreshAccountToken(accountWithProfile);
       } catch {
@@ -72,7 +100,7 @@ export async function checkAndRefreshAccount(account) {
     return saveAccount({
       ...accountWithProfile,
       status: "offline",
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     });
   }
 }
@@ -111,7 +139,10 @@ export async function loginAsAdmin(username, password) {
 
   // Admin password can be either a plaintext (fallback) or bcrypt hash
   const storedPassword = config.admin.password;
-  const isHash = storedPassword.startsWith("$2b$") || storedPassword.startsWith("$2a$") || storedPassword.startsWith("$2y$");
+  const isHash =
+    storedPassword.startsWith("$2b$") ||
+    storedPassword.startsWith("$2a$") ||
+    storedPassword.startsWith("$2y$");
 
   let isValid = false;
   if (isHash) {
@@ -128,7 +159,7 @@ export async function loginAsAdmin(username, password) {
   return createSession({
     ownerId: "admin",
     role: "admin",
-    username: config.admin.username
+    username: config.admin.username,
   });
 }
 
@@ -137,7 +168,7 @@ function createLocalUserSession(user) {
     ownerId: createLocalOwnerId(user.id),
     role: "user",
     userId: user.id,
-    username: user.username
+    username: user.username,
   });
 }
 
@@ -148,10 +179,15 @@ export async function buildDeepseekAccountForOwner({
   loginValue,
   ownerId,
   password,
-  proxy
+  proxy,
 }) {
   const user = loginResult.data?.biz_data?.user ?? loginResult.data?.user ?? {};
-  const token = user.token || user.sso_token || loginResult.data?.biz_data?.token || loginResult.data?.token || "";
+  const token =
+    user.token ||
+    user.sso_token ||
+    loginResult.data?.biz_data?.token ||
+    loginResult.data?.token ||
+    "";
   console.error(`[Account Import] Token received: ${token ? "yes" : "no"}`);
   if (!token) {
     throw new Error("DeepSeek login succeeded but response contains no token");
@@ -159,12 +195,14 @@ export async function buildDeepseekAccountForOwner({
   const emailMasked = maskIdentifier(user.email ?? loginValue);
   const mobileMasked = maskIdentifier(user.mobile_number ?? "");
   const loginValueMasked = maskIdentifier(loginValue);
-  const resolvedProfile = resolveDeepseekClientProfile(deviceProfile ?? { deviceId });
+  const resolvedProfile = resolveDeepseekClientProfile(
+    deviceProfile ?? { deviceId },
+  );
 
   let credentialPatch = {
     credentialMode: password ? "persistent" : "ephemeral",
     loginValue: loginValue || user.email || "",
-    password: password || ""
+    password: password || "",
   };
 
   return {
@@ -178,7 +216,14 @@ export async function buildDeepseekAccountForOwner({
     clientDid: resolvedProfile.clientDid,
     deviceProfile: resolvedProfile,
     token,
-    displayName: loginValue || resolveAccountLabel({ loginValue, emailMasked, loginValueMasked, mobileMasked }),
+    displayName:
+      loginValue ||
+      resolveAccountLabel({
+        loginValue,
+        emailMasked,
+        loginValueMasked,
+        mobileMasked,
+      }),
     emailMasked,
     mobileMasked,
     areaCode: user.area_code ?? "+86",
@@ -189,12 +234,12 @@ export async function buildDeepseekAccountForOwner({
       triggerTime: null,
       imageUrl: null,
       instruction: null,
-      rid: null
+      rid: null,
     },
     dataOptimizationDisabled: false,
     lastPrivacyUpdate: null,
     settingsReported: false,
-    lastSettingsReport: null
+    lastSettingsReport: null,
   };
 }
 
@@ -218,7 +263,7 @@ export function getSessionIncognitoState(session) {
     return {
       effectiveEnabled: false,
       globalEnabled: false,
-      ownerEnabled: false
+      ownerEnabled: false,
     };
   }
 

@@ -32,11 +32,15 @@ export async function createChatSession(account) {
 }
 
 export async function deleteChatSession(account, chatSessionId) {
+  const ids = Array.isArray(chatSessionId) ? chatSessionId : [chatSessionId];
+  const payload = {
+    chat_session_ids: ids
+  };
   const { response } = await proxyDeepseekRequest({
     account,
     method: "POST",
     path: "/chat_session/delete",
-    body: createJsonBody({ chat_session_id: chatSessionId }),
+    body: createJsonBody(payload),
     headers: JSON_HEADERS,
   });
   await readPayload(response);

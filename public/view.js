@@ -322,14 +322,26 @@ export function createView(options) {
     });
   }
 
+  let trendFilters = {
+    timeRange: "6h",
+    model: "all",
+    status: "all"
+  };
+
   function renderDashboard() {
+    if (els["trend-time-range"]) trendFilters.timeRange = els["trend-time-range"].value || "6h";
+    if (els["trend-model-filter"]) trendFilters.model = els["trend-model-filter"].value || "all";
+    if (els["trend-status-filter"]) trendFilters.status = els["trend-status-filter"].value || "all";
+
     renderDashboardHome({
       containers: {
         captchaAlerts: els["captcha-alert-list"],
         healthCards: els["dashboard-health-cards"],
         recentLogs: els["dashboard-recent-logs"],
-        requestChart: els["dashboard-request-chart"]
+        requestChart: els["dashboard-request-chart"],
+        modelFilter: els["trend-model-filter"]
       },
+      filters: trendFilters,
       state: currentState()
     });
   }

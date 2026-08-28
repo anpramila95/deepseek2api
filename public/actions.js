@@ -424,6 +424,24 @@ function bindFormActions({ els, onExplorerSubmit, onRefreshRequestLogs, onSubmit
   };
 }
 
+function bindDashboardActions({ els, onRenderDashboard }) {
+  const rerender = () => {
+    if (typeof onRenderDashboard === "function") {
+      onRenderDashboard();
+    }
+  };
+
+  if (els["trend-time-range"]) {
+    els["trend-time-range"].onchange = rerender;
+  }
+  if (els["trend-model-filter"]) {
+    els["trend-model-filter"].onchange = rerender;
+  }
+  if (els["trend-status-filter"]) {
+    els["trend-status-filter"].onchange = rerender;
+  }
+}
+
 function bindSystemSettingsActions({ els, onUpdateSystemSettings, setStatus }) {
   if (!els["settings-form"]) {
     return;
@@ -463,6 +481,7 @@ function bindSystemSettingsActions({ els, onUpdateSystemSettings, setStatus }) {
 export function bindActions(options) {
   bindAuthActions(options);
   bindWorkspaceActions(options);
+  bindDashboardActions(options);
   bindChainOfThoughtOverrideAction(options);
   bindSessionActions(options);
   bindUploadActions(options);

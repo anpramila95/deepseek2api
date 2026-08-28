@@ -192,7 +192,25 @@
                 <div id="dashboard-health-cards" class="dashboard-card-grid"></div>
                 <div class="dashboard-overview-grid">
                   <article class="bento-panel panel-paper settings-card trend-panel">
-                    <div class="section-heading"><div><span class="panel-label">Trend</span><h3>Xu hướng yêu cầu</h3></div></div>
+                    <div class="section-heading trend-section-heading">
+                      <div class="trend-title-group"><span class="panel-label">Trend</span><h3>Xu hướng yêu cầu</h3></div>
+                      <div class="trend-filters-bar">
+                        <select id="trend-time-range" class="chart-filter-select" title="Khoảng thời gian">
+                          <option value="6h">6 giờ gần nhất</option>
+                          <option value="24h">24 giờ qua</option>
+                          <option value="7d">7 ngày qua</option>
+                          <option value="30d">30 ngày qua</option>
+                        </select>
+                        <select id="trend-model-filter" class="chart-filter-select" title="Mô hình">
+                          <option value="all">Tất cả mô hình</option>
+                        </select>
+                        <select id="trend-status-filter" class="chart-filter-select" title="Trạng thái">
+                          <option value="all">Tất cả trạng thái</option>
+                          <option value="ok">Thành công (2xx)</option>
+                          <option value="error">Lỗi (4xx/5xx)</option>
+                        </select>
+                      </div>
+                    </div>
                     <div id="dashboard-request-chart" class="dashboard-chart"></div>
                   </article>
                   <article class="bento-panel panel-dark settings-card verification-panel">

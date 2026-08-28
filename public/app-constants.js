@@ -50,6 +50,7 @@ export const ELEMENT_IDS = [
   "api-key-plain", "api-key-tool-calls", "api-keys", "app-status", "app-view", "attach-files", "chat-status",
   "captcha-alert-list", "cot-override-description", "cot-override-form", "cot-override-label",
   "cot-override-status", "cot-override-toggle", "dashboard-health-cards", "dashboard-recent-logs", "dashboard-request-chart",
+  "trend-time-range", "trend-model-filter", "trend-status-filter",
   "delete-selected-invites", "delete-selected-users", "disable-selected-users", "draft-files", "enable-selected-users",
   "endpoint-count", "explorer-body", "explorer-form", "explorer-method", "explorer-output", "explorer-path",
   "explorer-query", "file-input", "incognito-description", "incognito-form",

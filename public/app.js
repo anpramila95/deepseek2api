@@ -134,13 +134,13 @@ view = createView({
 
     setStatus(els["app-status"], "Đang xóa...");
     try {
-      for (const sessionId of selectedIds) {
-        await proxyJson("/chat_session/delete", {
-          accountId,
-          method: "POST",
-          body: { chat_session_id: sessionId }
-        });
-      }
+      await proxyJson("/chat_session/delete", {
+        accountId,
+        method: "POST",
+        body: {
+          chat_session_ids: selectedIds,
+        }
+      });
       const remaining = state.sessions.filter((session) => !selectedIds.includes(session.id));
       const removedActiveSession = selectedIds.includes(state.selectedSessionId);
       updateState({
@@ -424,6 +424,7 @@ bindActions({
   onLogout: services.logout,
   onRefreshRequestLogs: services.loadRequestLogs,
   onRefreshSessions: workspace.loadSessions,
+  onRenderDashboard: view.renderDashboard,
   onRegister: services.register,
   onSendPrompt: sendPrompt,
   onSubmitApiKey: services.submitApiKey,
