@@ -396,6 +396,9 @@ export function renderSystemSettingsForm({ accounts, elements, isAdmin, settings
   if (elements.toolParsingMode) {
     elements.toolParsingMode.checked = settings?.toolParsingModeEnabled === true;
   }
+  if (elements.globalProxies) {
+    elements.globalProxies.value = (settings?.globalProxies || []).join("\n");
+  }
   if (elements.inputContentLimit) {
     elements.inputContentLimit.value = settings?.inputContentLimit ?? 160000;
   }
@@ -417,6 +420,7 @@ export function renderSystemSettingsForm({ accounts, elements, isAdmin, settings
     elements.autoSolve,
     elements.chainOfThoughtOverride,
     elements.toolParsingMode,
+    elements.globalProxies,
     elements.visionFallback,
     elements.visionAccount,
     elements.maxRetries,

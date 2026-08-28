@@ -496,6 +496,7 @@ async function submitShumeiCoordinates(challenge, coordinates, account = null) {
   const result = await fetchJson(`${config.shumei.captchaBaseUrl}/ca/v1/fverify`, {
     method: "POST",
     headers,
+    dispatcher: resolveProxyDispatcher(account?.proxy),
     body: payload
   });
   const pass = Boolean(

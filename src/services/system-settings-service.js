@@ -1,6 +1,19 @@
 import { config } from "../config.js";
 import { readStore, updateStore } from "../storage/store.js";
 
+function normalizeGlobalProxies(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item || "").trim()).filter(Boolean);
+  }
+  if (typeof value === "string") {
+    return value
+      .split(/[\r\n]+/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
 function normalizeBoolean(value, fallback) {
   if (value === undefined) {
     return fallback;
@@ -129,7 +142,8 @@ export function getSystemSettings(options = {}) {
       storedOverrideEnabled,
       config.chainOfThoughtOverrideEnabled
     ),
-    toolParsingModeEnabled: normalizeBoolean(storedToolParsingModeEnabled, false)
+    toolParsingModeEnabled: normalizeBoolean(storedToolParsingModeEnabled, false),
+    globalProxies: normalizeGlobalProxies(stored.globalProxies)
   };
 }
 
@@ -179,6 +193,9 @@ export function updateSystemSettings(patch = {}) {
           10_000_000
         )
       };
+  const nextGlobalProxiesPatch = patch.globalProxies === undefined
+    ? {}
+    : { globalProxies: normalizeGlobalProxies(patch.globalProxies) };
 
   updateStore((state) => ({
     ...state,
@@ -190,7 +207,8 @@ export function updateSystemSettings(patch = {}) {
       },
       ...nextOverridePatch,
       ...nextToolParsingModePatch,
-      ...nextInputContentLimitPatch
+      ...nextInputContentLimitPatch,
+      ...nextGlobalProxiesPatch
     }
   }));
 

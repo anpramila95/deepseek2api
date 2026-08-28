@@ -61,7 +61,7 @@ export const ELEMENT_IDS = [
   "settings-auto-solve", "settings-clear-yescaptcha-key", "settings-cooldown-ms", "settings-endpoint",
   "settings-form", "settings-input-content-limit", "settings-max-retries", "settings-origin", "settings-registration-summary",
   "settings-status", "settings-vision-fallback", "settings-vision-account", "settings-cot-override",
-  "settings-tool-parsing-mode", "settings-yescaptcha-key",
+  "settings-tool-parsing-mode", "settings-global-proxies", "settings-yescaptcha-key",
   "shared-mode-description", "shared-mode-form", "shared-mode-label", "shared-mode-panel",
   "shared-mode-status", "shared-mode-summary", "shared-mode-toggle", "tab-admin", "user-summary",
   "tool-parsing-description", "tool-parsing-form", "tool-parsing-label", "tool-parsing-status",

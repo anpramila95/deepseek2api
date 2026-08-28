@@ -351,6 +351,7 @@ export function createView(options) {
         inputContentLimit: els["settings-input-content-limit"],
         chainOfThoughtOverride: els["settings-cot-override"],
         toolParsingMode: els["settings-tool-parsing-mode"],
+        globalProxies: els["settings-global-proxies"],
         maxRetries: els["settings-max-retries"],
         visionAccount: els["settings-vision-account"],
         visionFallback: els["settings-vision-fallback"],

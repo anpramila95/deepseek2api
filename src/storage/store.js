@@ -135,6 +135,11 @@ function normalizeSystemSettings(value) {
     ?? value?.promptChunkLimit
     ?? value?.prompt?.inputContentLimit
     ?? value?.prompt?.chunkLimit;
+  const globalProxies = Array.isArray(value?.globalProxies)
+    ? value.globalProxies.map((item) => String(item || "").trim()).filter(Boolean)
+    : typeof value?.globalProxies === "string"
+      ? value.globalProxies.split(/[\r\n]+/).map((item) => item.trim()).filter(Boolean)
+      : [];
 
   return {
     captcha: {
@@ -159,6 +164,7 @@ function normalizeSystemSettings(value) {
       config.deepseekCompletion.inputContentLimit,
       { min: 1, max: 10_000_000 }
     ),
+    globalProxies,
     ...(chainOfThoughtOverrideEnabled === undefined
       ? {}
       : { chainOfThoughtOverrideEnabled: normalizeBoolean(chainOfThoughtOverrideEnabled) }),

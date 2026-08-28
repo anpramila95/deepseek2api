@@ -385,7 +385,8 @@ function bindSystemSettingsActions({ els, onUpdateSystemSettings, setStatus }) {
         },
         inputContentLimit: els["settings-input-content-limit"].value,
         chainOfThoughtOverrideEnabled: els["settings-cot-override"].checked,
-        toolParsingModeEnabled: els["settings-tool-parsing-mode"].checked
+        toolParsingModeEnabled: els["settings-tool-parsing-mode"].checked,
+        globalProxies: els["settings-global-proxies"]?.value ?? ""
       });
       els["settings-yescaptcha-key"].value = "";
       els["settings-clear-yescaptcha-key"].checked = false;
