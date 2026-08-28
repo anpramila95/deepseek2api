@@ -34,11 +34,11 @@ export function getAccountById(accountId) {
 export function resolveAccountLabel(account) {
   return (
     [
-      account?.loginValueMasked,
+      account?.loginValue,
       account?.displayName,
+      account?.loginValueMasked,
       account?.emailMasked,
       account?.mobileMasked,
-      account?.loginValue ? maskIdentifier(account.loginValue) : "",
       account?.id,
     ].find(Boolean) ?? ""
   );

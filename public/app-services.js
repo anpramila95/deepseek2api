@@ -117,6 +117,23 @@ export function createAppServices(options) {
     await bootstrapWithRevealedApiKeys();
   }
 
+  async function batchImportAccounts({ rawText, proxy }) {
+    const payload = await postJson("/api/accounts/batch-import", {
+      rawText,
+      proxy
+    });
+
+    if (els["account-batch-text"]) els["account-batch-text"].value = "";
+    if (els["account-import-file"]) els["account-import-file"].value = "";
+    if (els["account-import-file-name"]) els["account-import-file-name"].textContent = "Định dạng: email,password,proxy hoặc email----password----proxy hoặc JSON";
+    await bootstrapWithRevealedApiKeys();
+    return payload;
+  }
+
+  async function exportAccounts() {
+    return requestJson("/api/accounts/export");
+  }
+
   async function checkAccounts(accountId = null) {
     const url = accountId ? `/api/accounts/${accountId}/check` : "/api/accounts/check";
     await postJson(url, {});
@@ -269,6 +286,8 @@ export function createAppServices(options) {
 
   return Object.freeze({
     addAccount,
+    batchImportAccounts,
+    exportAccounts,
     batchDeleteUsers,
     batchDisableUsers,
     changeAccount,

@@ -120,7 +120,6 @@ export async function loginToDeepseek({ loginValue, password, deviceId, devicePr
   }
 
   console.error(`[DeepSeek Auth] Login successful for user "${maskedUser}"`);
-  fs.promises.writeFile("deepseek-auth-result.json", JSON.stringify(result, null, 2));
   return result;
 }
 

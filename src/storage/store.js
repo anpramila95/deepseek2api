@@ -211,22 +211,17 @@ function normalizeAccounts(value) {
 
   return value.map((account) => {
     const loginValueMasked = account?.loginValueMasked || maskIdentifier(account?.loginValue);
+    const loginValue = account?.loginValue || "";
     const nextAccount = {
       ...account,
-      credentialMode: account?.credentialMode ?? (
-        account?.password && config.security.persistAccountCredentials ? "persistent" : "ephemeral"
-      ),
+      credentialMode: account?.credentialMode ?? (account?.password ? "persistent" : "ephemeral"),
+      loginValue: loginValue || loginValueMasked,
+      password: account?.password || "",
       loginValueMasked,
-      displayName: account?.displayName ? maskIdentifier(account.displayName) : loginValueMasked,
+      displayName: account?.displayName || loginValue || loginValueMasked,
       emailMasked: maskIdentifier(account?.emailMasked),
       mobileMasked: maskIdentifier(account?.mobileMasked)
     };
-
-    if (!config.security.persistAccountCredentials) {
-      nextAccount.loginValue = loginValueMasked;
-      nextAccount.password = "";
-      nextAccount.credentialMode = "ephemeral";
-    }
 
     return withResolvedDeepseekClientProfile(nextAccount);
   });

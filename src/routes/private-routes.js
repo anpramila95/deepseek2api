@@ -17,6 +17,7 @@ import {
   resolveAccountLabel
 } from "../services/account-service.js";
 import {
+  batchImportAccountsForOwner,
   importDeepseekAccountForOwner,
   importRawDeepseekAccountForOwner
 } from "../services/account-import-service.js";
@@ -224,6 +225,39 @@ export async function handlePrivateApiRequest({ request, response, session, url 
         ownerId: session.ownerId
       })
     });
+    return true;
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/accounts/export") {
+    const visible = getVisibleAccounts(session);
+    sendJson(response, 200, {
+      accounts: visible.map((acc) => ({
+        email: acc.loginValue || acc.displayName || "",
+        password: acc.password || "",
+        proxy: acc.proxy || "",
+        token: acc.token || "",
+        status: acc.status || "online",
+        updatedAt: acc.updatedAt
+      }))
+    });
+    return true;
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/accounts/batch-import") {
+    const body = await readJsonRequest(request);
+    try {
+      const result = await batchImportAccountsForOwner({
+        ownerId: session.ownerId,
+        rawInput: body.accounts || body.rawText,
+        defaultProxy: body.proxy
+      });
+      sendJson(response, 200, {
+        ...result,
+        accounts: getVisibleAccounts(session).map(toPublicAccount)
+      });
+    } catch (err) {
+      sendError(response, 400, err.message);
+    }
     return true;
   }
 

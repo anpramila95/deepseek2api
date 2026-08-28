@@ -242,7 +242,9 @@
                         <div class="segmented-control mode-switch">
                           <button type="button" class="auth-tab-btn active" data-import-mode="form" data-ripple>Tài khoản</button>
                           <button type="button" class="auth-tab-btn" data-import-mode="json" data-ripple>Dán JSON / Token</button>
+                          <button type="button" class="auth-tab-btn" data-import-mode="batch" data-ripple>Nhập hàng loạt / File</button>
                         </div>
+                        <button type="button" class="button-secondary" id="export-accounts-button" data-ripple><i data-lucide="download"></i><span>Xuất tài khoản</span></button>
                         <button type="button" class="button-secondary account-check-button" id="check-accounts-button" data-ripple><i data-lucide="refresh-cw"></i><span>Kiểm tra tất cả</span></button>
                       </div>
                     </div>
@@ -255,8 +257,23 @@
                       </div>
                       <div id="import-pane-json" class="form-grid-json hidden">
                         <label class="input-group"><span>Proxy (tuỳ chọn)</span><input id="account-proxy-json" placeholder="http://user:pass@host:port" autocomplete="off"></label>
-                                                <label class="input-group wide-field"><span>Dữ liệu JSON hoặc Bearer Token</span><textarea id="account-raw-json" rows="2" placeholder='Dán chuỗi Token hoặc JSON tài khoản (Ví dụ: {"token": "..."} hoặc eyJhbGci...)'></textarea></label>
+                        <label class="input-group wide-field"><span>Dữ liệu JSON hoặc Bearer Token</span><textarea id="account-raw-json" rows="2" placeholder='Dán chuỗi Token hoặc JSON tài khoản (Ví dụ: {"token": "..."} hoặc eyJhbGci...)'></textarea></label>
                         <button type="submit" class="button-primary" data-ripple><span>Liên kết</span><i data-lucide="link"></i></button>
+                      </div>
+                      <div id="import-pane-batch" class="form-grid-batch hidden">
+                        <div class="batch-upload-row">
+                          <label class="button-secondary file-upload-btn" data-ripple>
+                            <i data-lucide="upload"></i>
+                            <span>Chọn file (.txt, .json, .csv)</span>
+                            <input type="file" id="account-import-file" accept=".json,.txt,.csv" style="display:none">
+                          </label>
+                          <span class="muted file-name-label" id="account-import-file-name">Định dạng: email,password,proxy hoặc email----password----proxy hoặc JSON</span>
+                        </div>
+                        <label class="input-group wide-field">
+                          <span>Nội dung tài khoản (mỗi tài khoản một dòng hoặc mảng JSON)</span>
+                          <textarea id="account-batch-text" rows="4" placeholder="email1@gmail.com,password123,http://user:pass@host:port&#10;email2@gmail.com----password456----http://proxy:8080&#10;email3@gmail.com,password789"></textarea>
+                        </label>
+                        <button type="submit" class="button-primary" data-ripple><span>Nhập danh sách</span><i data-lucide="upload"></i></button>
                       </div>
                     </form>
                     <pre id="account-status" class="status hidden"></pre>

@@ -11,7 +11,7 @@ import { listPublicUsers } from "./user-service.js";
 import { maskIdentifier } from "../utils/privacy.js";
 
 export function toPublicAccount(account) {
-  const loginValue = account.loginValueMasked || maskIdentifier(account.loginValue);
+  const loginValue = account.loginValue || account.loginValueMasked || maskIdentifier(account.loginValue);
 
   return {
     id: account.id,

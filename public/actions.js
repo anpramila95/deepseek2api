@@ -37,6 +37,8 @@ function bindWorkspaceActions({
   els,
   onAccountChange,
   onAddAccount,
+  onBatchImportAccounts,
+  onExportAccounts,
   onCheckAccounts,
   onClearCaptcha,
   onLogout,
@@ -67,12 +69,36 @@ function bindWorkspaceActions({
 
   els["account-form"].onsubmit = async (event) => {
     event.preventDefault();
+
+    const activeModeBtn = document.querySelector("#account-binding-card [data-import-mode].active");
+    const mode = activeModeBtn?.dataset.importMode || "form";
+
+    if (mode === "batch") {
+      const rawText = els["account-batch-text"]?.value.trim() ?? "";
+      if (!rawText) {
+        setStatus(els["account-status"], "Vui lòng nhập nội dung hoặc tải lên file danh sách tài khoản.");
+        return;
+      }
+      setStatus(els["account-status"], "Đang xử lý nhập hàng loạt...");
+      try {
+        const result = await onBatchImportAccounts({ rawText });
+        const errorInfo = result.errors?.length ? ` (${result.errors.length} lỗi)` : "";
+        setStatus(
+          els["account-status"],
+          `Nhập hoàn tất: Thành công ${result.imported}/${result.total}${errorInfo}.`
+        );
+      } catch (error) {
+        setStatus(els["account-status"], error.message);
+      }
+      return;
+    }
+
     setStatus(els["account-status"], "Đang liên kết...");
 
     const username = els["account-username"]?.value.trim() ?? "";
     const password = els["account-password"]?.value ?? "";
     const rawJson = els["account-raw-json"]?.value.trim() ?? "";
-        const proxy = els["account-proxy"]?.value.trim() || els["account-proxy-json"]?.value.trim() || "";
+    const proxy = els["account-proxy"]?.value.trim() || els["account-proxy-json"]?.value.trim() || "";
 
     try {
       await onAddAccount({
@@ -84,13 +110,53 @@ function bindWorkspaceActions({
       if (els["account-username"]) els["account-username"].value = "";
       if (els["account-password"]) els["account-password"].value = "";
       if (els["account-raw-json"]) els["account-raw-json"].value = "";
-            if (els["account-proxy"]) els["account-proxy"].value = "";
-                  if (els["account-proxy-json"]) els["account-proxy-json"].value = "";
+      if (els["account-proxy"]) els["account-proxy"].value = "";
+      if (els["account-proxy-json"]) els["account-proxy-json"].value = "";
       setStatus(els["account-status"], "Đã liên kết.");
     } catch (error) {
       setStatus(els["account-status"], error.message);
     }
   };
+
+  const fileInput = els["account-import-file"];
+  if (fileInput) {
+    fileInput.addEventListener("change", (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      if (els["account-import-file-name"]) {
+        els["account-import-file-name"].textContent = `Đã chọn: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+      }
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        if (els["account-batch-text"]) {
+          els["account-batch-text"].value = evt.target.result;
+        }
+      };
+      reader.readAsText(file);
+    });
+  }
+
+  if (els["export-accounts-button"]) {
+    els["export-accounts-button"].onclick = async () => {
+      setStatus(els["account-status"], "Đang xuất dữ liệu...");
+      try {
+        const data = await onExportAccounts();
+        const blob = new Blob([JSON.stringify(data.accounts, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        const dateStr = new Date().toISOString().slice(0, 10);
+        a.download = `deepseek-accounts-${dateStr}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        setStatus(els["account-status"], `Đã xuất ${data.accounts.length} tài khoản thành công.`);
+      } catch (error) {
+        setStatus(els["account-status"], `Xuất thất bại: ${error.message}`);
+      }
+    };
+  }
 
   const accountCard = document.getElementById("account-binding-card");
   if (accountCard) {
@@ -105,14 +171,11 @@ function bindWorkspaceActions({
 
       const paneForm = document.getElementById("import-pane-form");
       const paneJson = document.getElementById("import-pane-json");
-      if (paneForm && paneJson) {
-        if (mode === "json") {
-          paneForm.classList.add("hidden");
-          paneJson.classList.remove("hidden");
-        } else {
-          paneForm.classList.remove("hidden");
-          paneJson.classList.add("hidden");
-        }
+      const paneBatch = document.getElementById("import-pane-batch");
+      if (paneForm && paneJson && paneBatch) {
+        paneForm.classList.toggle("hidden", mode !== "form");
+        paneJson.classList.toggle("hidden", mode !== "json");
+        paneBatch.classList.toggle("hidden", mode !== "batch");
       }
     });
   }

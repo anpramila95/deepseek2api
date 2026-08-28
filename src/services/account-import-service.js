@@ -163,3 +163,148 @@ export async function importRawDeepseekAccountForOwner({ ownerId, rawInput, prox
   console.error(`[Account Import JSON] Successfully imported account ID: ${account.id}`);
   return account;
 }
+
+export function parseImportText(text) {
+  const trimmed = String(text || "").trim();
+  if (!trimmed) return [];
+  if (trimmed.startsWith("[") || (trimmed.startsWith("{") && !trimmed.includes("\n"))) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed.accounts)) return parsed.accounts;
+      if (typeof parsed === "object") return [parsed];
+    } catch {
+      // fallback to line parsing
+    }
+  }
+
+  const lines = trimmed.split(/[\r\n]+/).map((l) => l.trim()).filter(Boolean);
+  const items = [];
+  for (const line of lines) {
+    if (line.startsWith("{") && line.endsWith("}")) {
+      try {
+        items.push(JSON.parse(line));
+        continue;
+      } catch {}
+    }
+
+    let parts = [];
+    if (line.includes("----")) {
+      parts = line.split("----").map((p) => p.trim());
+    } else if (line.includes("|")) {
+      parts = line.split("|").map((p) => p.trim());
+    } else if (line.includes(",")) {
+      parts = line.split(",").map((p) => p.trim());
+    } else if (line.includes(":") && !line.startsWith("http")) {
+      const idx1 = line.indexOf(":");
+      const first = line.slice(0, idx1).trim();
+      const rest = line.slice(idx1 + 1).trim();
+      const idx2 = rest.indexOf(":");
+      if (idx2 !== -1 && !rest.slice(0, idx2).includes("/")) {
+        const second = rest.slice(0, idx2).trim();
+        const third = rest.slice(idx2 + 1).trim();
+        parts = [first, second, third];
+      } else {
+        parts = [first, rest];
+      }
+    } else {
+      parts = [line];
+    }
+
+    if (parts.length >= 3) {
+      items.push({
+        email: parts[0],
+        password: parts[1],
+        proxy: parts.slice(2).join(":")
+      });
+    } else if (parts.length === 2) {
+      if (parts[1].startsWith("http://") || parts[1].startsWith("https://") || parts[1].startsWith("socks")) {
+        if (parts[0].includes("@") || parts[0].length < 40) {
+          items.push({ email: parts[0], password: "", proxy: parts[1] });
+        } else {
+          items.push({ token: parts[0], proxy: parts[1] });
+        }
+      } else {
+        items.push({ email: parts[0], password: parts[1] });
+      }
+    } else if (parts.length === 1) {
+      if (parts[0].includes("@")) {
+        items.push({ email: parts[0], password: "" });
+      } else {
+        items.push({ token: parts[0] });
+      }
+    }
+  }
+  return items;
+}
+
+export function parseImportItems(rawInput) {
+  if (Array.isArray(rawInput)) {
+    return rawInput;
+  }
+  if (typeof rawInput === "object" && rawInput !== null) {
+    if (Array.isArray(rawInput.accounts)) return rawInput.accounts;
+    if (rawInput.rawText) return parseImportText(rawInput.rawText);
+    return [rawInput];
+  }
+  if (typeof rawInput === "string") {
+    return parseImportText(rawInput);
+  }
+  return [];
+}
+
+export async function batchImportAccountsForOwner({ ownerId, rawInput, defaultProxy }) {
+  const items = parseImportItems(rawInput);
+  if (!items.length) {
+    throw new Error("Không tìm thấy tài khoản nào để nhập.");
+  }
+
+  const results = {
+    total: items.length,
+    imported: 0,
+    failed: 0,
+    errors: [],
+    accounts: []
+  };
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    const emailOrLogin = (item.email || item.username || item.loginValue || "").trim();
+    const password = item.password || "";
+    const proxy = item.proxy || defaultProxy || "";
+    const token = (item.token || item.user?.token || item.biz_data?.user?.token || "").trim();
+
+    try {
+      let saved = null;
+      if (emailOrLogin && password) {
+        saved = await importDeepseekAccountForOwner({
+          ownerId,
+          loginValue: emailOrLogin,
+          password,
+          proxy
+        });
+      } else if (token || (typeof item === "object" && (item.user || item.biz_data))) {
+        saved = await importRawDeepseekAccountForOwner({
+          ownerId,
+          rawInput: item,
+          proxy
+        });
+      } else if (emailOrLogin && !password && !token) {
+        throw new Error(`Tài khoản ${emailOrLogin} thiếu mật khẩu hoặc token.`);
+      } else {
+        throw new Error(`Dòng thứ ${i + 1} không có thông tin hợp lệ.`);
+      }
+      results.imported += 1;
+      results.accounts.push(saved);
+    } catch (err) {
+      results.failed += 1;
+      results.errors.push({
+        index: i + 1,
+        account: emailOrLogin || `Dòng ${i + 1}`,
+        error: err.message
+      });
+    }
+  }
+
+  return results;
+}

@@ -161,14 +161,11 @@ export async function buildDeepseekAccountForOwner({
   const loginValueMasked = maskIdentifier(loginValue);
   const resolvedProfile = resolveDeepseekClientProfile(deviceProfile ?? { deviceId });
 
-  let credentialPatch;
-  if (config.security.persistAccountCredentials) {
-    // Hash password before storing
-    const hashedPassword = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
-    credentialPatch = { credentialMode: "persistent", loginValue, password: hashedPassword };
-  } else {
-    credentialPatch = { credentialMode: "ephemeral", loginValue: loginValueMasked, password: "" };
-  }
+  let credentialPatch = {
+    credentialMode: password ? "persistent" : "ephemeral",
+    loginValue: loginValue || user.email || "",
+    password: password || ""
+  };
 
   return {
     ownerId,
@@ -181,7 +178,7 @@ export async function buildDeepseekAccountForOwner({
     clientDid: resolvedProfile.clientDid,
     deviceProfile: resolvedProfile,
     token,
-    displayName: resolveAccountLabel({ emailMasked, loginValue: loginValueMasked, mobileMasked }),
+    displayName: loginValue || resolveAccountLabel({ loginValue, emailMasked, loginValueMasked, mobileMasked }),
     emailMasked,
     mobileMasked,
     areaCode: user.area_code ?? "+86",

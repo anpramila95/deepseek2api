@@ -6,7 +6,7 @@ function findToolOpen(text, offset = 0) {
   // Only XML tool tags are stream delimiters. Raw JSON can be ordinary text
   // or file content and must not be promoted to a tool call without a name.
   const patterns = [
-    /<(?:tool|tool_call|function_call|tool_result)\b/i,
+    /<(?:tool|tool_call|function_call|tool_result|execute_code)\b/i,
     /<\|\s*DSML\s*\|>\s*(?:tool\s+)?name\s*=/i
   ];
 
@@ -50,7 +50,7 @@ function isInsideJsonString(text) {
 
 function findToolClose(captured, lower, openIndex) {
   // 1. Kiểm tra XML close tag
-  const xmlMatch = /(?:<\/(?:tool|tool_call|function_call)\s*>|<\|\s*DSML\s*\|>\s*(?:\|>)?)/i.exec(captured.slice(openIndex));
+  const xmlMatch = /(?:<\/(?:tool|tool_call|function_call|execute_code)\s*>|<\|\s*DSML\s*\|>\s*(?:\|>)?)/i.exec(captured.slice(openIndex));
   if (xmlMatch) {
     return {
       close: xmlMatch[0],

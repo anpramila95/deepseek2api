@@ -406,6 +406,8 @@ bindActions({
   els,
   onAccountChange: services.changeAccount,
   onAddAccount: services.addAccount,
+  onBatchImportAccounts: services.batchImportAccounts,
+  onExportAccounts: services.exportAccounts,
   onBatchDeleteInvites: services.deleteInvites,
   onBatchDeleteUsers: services.batchDeleteUsers,
   onBatchDisableUsers: services.batchDisableUsers,

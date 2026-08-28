@@ -12,8 +12,8 @@ export function resolveAccountDetail(account) {
   const label = resolveAccountLabel(account);
 
   return [
+    account?.displayName,
     account?.mobileMasked,
-    account?.emailMasked,
-    account?.displayName
+    account?.emailMasked
   ].find((value) => value && value !== label) || "";
 }

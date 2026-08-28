@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 const TOOL_XML_PATTERN = /<(?:tool|tool_call|function_call)\b(?:\s+name\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?[^>]*>([\s\S]*?)<\/(?:tool|tool_call|function_call)\s*>/gi;
+const EXECUTE_CODE_PATTERN = /<execute_code\b[^>]*>([\s\S]*?)<\/execute_code\s*>/gi;
 const JSON_BLOCK_PATTERN = /```(?:json)?\s*([\s\S]*?)\s*```/gi;
 
 function toStringSafe(value) {
@@ -70,6 +71,17 @@ function parseXmlToolCalls(source) {
     if (name && input) {
       output.push(createParsedToolCall(name, input));
     }
+  }
+
+  EXECUTE_CODE_PATTERN.lastIndex = 0;
+  let codeMatch;
+  while ((codeMatch = EXECUTE_CODE_PATTERN.exec(source))) {
+    const rawCode = (codeMatch[1] ?? "").trim();
+    // Bỏ qua markdown wrapper ```python ... ``` nếu có
+    const cleanedCode = rawCode.replace(/^```(?:python|py)?\s*/i, "").replace(/\s*```$/, "");
+    output.push(createParsedToolCall("code_interpreter", { code: cleanedCode }));
+    output.push(createParsedToolCall("execute_code", { code: cleanedCode }));
+    output.push(createParsedToolCall("python", { code: cleanedCode }));
   }
 
   return output;

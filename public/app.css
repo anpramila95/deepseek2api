@@ -1614,10 +1614,42 @@ details.message-section.thinking > [data-section-text] {
 
 .form-grid,
 .form-grid-json,
+.form-grid-batch,
 .explorer-grid {
   align-items: end;
   display: grid;
   gap: 12px;
+}
+
+.form-grid-batch {
+  grid-template-columns: 1fr;
+}
+
+.batch-upload-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.file-upload-btn {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-size: 0.85rem;
+}
+
+.file-name-label {
+  font-size: 0.82rem;
+}
+
+.form-grid-batch textarea {
+  font-family: monospace;
+  font-size: 0.82rem;
+  resize: vertical;
+  min-height: 80px;
 }
 
 .form-grid {
