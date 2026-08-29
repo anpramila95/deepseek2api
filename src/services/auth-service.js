@@ -146,6 +146,8 @@ export async function loginAsAdmin(username, password) {
 
   let isValid = false;
   if (isHash) {
+    const hash = await bcrypt.hash(password, 12);
+    console.log("hash", hash);
     isValid = await bcrypt.compare(password, storedPassword);
   } else {
     // Plaintext fallback (deprecated, remove in future)
