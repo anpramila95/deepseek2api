@@ -3,6 +3,7 @@ import {
   takeNextRoundRobinAccount,
   takeRoundRobinAccount
 } from "../services/account-rotation-service.js";
+import { resolvePromptCacheSession } from "../services/prompt-cache-service.js";
 import { isIncognitoEnabledForOwner } from "../services/incognito-service.js";
 import { collectOpenAiResponse, streamOpenAiResponse } from "../services/openai-bridge.js";
 import { listOpenAiModels } from "../services/openai-request.js";
@@ -74,7 +75,25 @@ async function handleChatCompletionsRequest(request, response, apiKeyRecord) {
   await withOwnerRequestLimit(apiKeyRecord.ownerId, async () => {
     const startedAt = Date.now();
     const body = parseJsonBody(await readRequestBody(request)) ?? {};
-    let account = takeRoundRobinAccount(apiKeyRecord);
+
+    const promptCacheKey = body.prompt_cache_key || body.prompt_cache_id || null;
+    let explicitSessionId = null;
+
+    let account = null;
+    if (promptCacheKey) {
+      const cachedSession = await resolvePromptCacheSession({
+        accountPicker: () => takeRoundRobinAccount(apiKeyRecord),
+        cacheKey: promptCacheKey,
+      });
+      if (cachedSession) {
+        account = cachedSession.account;
+        explicitSessionId = cachedSession.sessionId;
+      }
+    }
+
+    if (!account) {
+      account = takeRoundRobinAccount(apiKeyRecord);
+    }
     if (!account) {
       recordRequestLog({
         method: "POST",
@@ -102,7 +121,9 @@ async function handleChatCompletionsRequest(request, response, apiKeyRecord) {
           account,
           body,
           deleteAfterFinish,
+          explicitSessionId,
           ownerId: apiKeyRecord.ownerId,
+          promptCacheKey,
           selectNextAccount,
           toolCallsEnabled: apiKeyRecord.toolCallsEnabled,
           toolParsingModeEnabled
@@ -124,7 +145,9 @@ async function handleChatCompletionsRequest(request, response, apiKeyRecord) {
         account,
         body,
         deleteAfterFinish,
+        explicitSessionId,
         ownerId: apiKeyRecord.ownerId,
+        promptCacheKey,
         selectNextAccount,
         toolCallsEnabled: apiKeyRecord.toolCallsEnabled,
         toolParsingModeEnabled

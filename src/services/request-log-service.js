@@ -24,6 +24,11 @@ export function recordRequestLog(entry) {
     }
   };
 
+  const statusColor = record.status >= 400 ? "\x1b[31m" : "\x1b[32m";
+  const resetColor = "\x1b[0m";
+  const errorInfo = record.error ? ` - Error: ${record.error}` : "";
+  console.log(`[${record.at}] ${record.method} ${record.path} ${statusColor}${record.status || "..."}${resetColor} (${record.durationMs || 0}ms)${record.model ? ` [${record.model}]` : ""}${errorInfo}`);
+
   requestLogs.unshift(record);
   updateStore((state) => {
     const usage = state.usageStats ?? {};

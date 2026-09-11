@@ -271,9 +271,11 @@ export async function collectOpenAiResponse({
   account,
   body,
   deleteAfterFinish = false,
+  explicitSessionId,
   maxFrequencyRetries,
   onFrequencyRetry,
   ownerId,
+  promptCacheKey,
   retryDelayMs,
   retrySleep,
   selectNextAccount,
@@ -293,6 +295,8 @@ export async function collectOpenAiResponse({
       const initialCompletion = await collectCompletionContent({
         account: activeAccount,
         deleteAfterFinish,
+        explicitSessionId,
+        promptCacheKey,
         requestOptions,
       });
       return applyToolParsingMode({
@@ -319,10 +323,12 @@ export async function streamOpenAiResponse(options) {
     account,
     body,
     deleteAfterFinish = false,
+    explicitSessionId,
     heartbeatIntervalMs,
     maxFrequencyRetries,
     onFrequencyRetry,
     ownerId,
+    promptCacheKey,
     response,
     retryDelayMs,
     retrySleep,
@@ -454,6 +460,8 @@ export async function streamOpenAiResponse(options) {
           const initialCompletion = await collectCompletionContent({
             account: activeAccount,
             deleteAfterFinish,
+            explicitSessionId,
+            promptCacheKey,
             requestOptions,
           });
           return applyToolParsingMode({
@@ -481,6 +489,8 @@ export async function streamOpenAiResponse(options) {
         const streamResult = await streamCompletionContent({
           account: activeAccount,
           deleteAfterFinish,
+          explicitSessionId,
+          promptCacheKey,
           onDelta: (delta) => {
             if (delta.kind === "thinking") {
               writeSseChunk(

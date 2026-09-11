@@ -2,6 +2,7 @@ import { createChatSession, deleteChatSession } from "./chat-session-service.js"
 import { consumeDeepseekCompletion } from "./deepseek-completion-stream.js";
 import { uploadOpenAiVisionFiles } from "./deepseek-file-service.js";
 import { startDeepseekChatCompletion } from "./deepseek-chat-response.js";
+import { updatePromptCacheSession } from "./prompt-cache-service.js";
 
 function startCompletion({ account, inputContentLimit, requestOptions, sessionId }) {
   return startDeepseekChatCompletion({
@@ -39,15 +40,36 @@ async function prepareRequestOptions({ account, requestOptions, sessionId }) {
   };
 }
 
-async function withCompletionSession({ account, deleteAfterFinish, onComplete }) {
-  const sessionId = await createChatSession(account);
+async function withCompletionSession({ account, deleteAfterFinish, explicitSessionId, onComplete, promptCacheKey }) {
+  let sessionId = explicitSessionId;
+  if (!sessionId) {
+    sessionId = await createChatSession(account);
+  }
 
-  // Keep an incognito session alive when the upstream stream is incomplete
-  // or failed.  The completion consumer only marks `completed: true` after a
-  // close/full-message response has been observed (including any automatic
-  // resume/continue attempts), so cleanup cannot erase a recoverable chat.
-  const result = await onComplete(sessionId);
-  if (deleteAfterFinish && result?.completed === true) {
+  let result;
+  try {
+    result = await onComplete(sessionId);
+  } catch (error) {
+    const msg = String(error?.message ?? "").toLowerCase();
+    const isSessionNotFound =
+      error.statusCode === 400 ||
+      error.statusCode === 404 ||
+      error.statusCode === 502 ||
+      /invalid.*(?:chat_)?session|session.*invalid|session.*not.*found|session.*deleted|chat_session_id/i.test(msg);
+
+    if (explicitSessionId && isSessionNotFound) {
+      console.warn(`[PromptCache] Session ${explicitSessionId} invalid (${error.message}), recreating new session and retrying...`);
+      sessionId = await createChatSession(account);
+      if (promptCacheKey) {
+        updatePromptCacheSession(promptCacheKey, account.id, sessionId);
+      }
+      result = await onComplete(sessionId);
+    } else {
+      throw error;
+    }
+  }
+
+  if (deleteAfterFinish && !explicitSessionId && result?.completed === true) {
     await deleteChatSession(result.refreshedAccount ?? account, sessionId);
   }
 
@@ -57,12 +79,16 @@ async function withCompletionSession({ account, deleteAfterFinish, onComplete })
 export async function collectCompletionContent({
   account,
   deleteAfterFinish = false,
+  explicitSessionId,
   inputContentLimit,
+  promptCacheKey,
   requestOptions
 }) {
   return withCompletionSession({
     account,
     deleteAfterFinish,
+    explicitSessionId,
+    promptCacheKey,
     onComplete: async (sessionId) => {
       const preparedOptions = await prepareRequestOptions({ account, requestOptions, sessionId });
       const { refreshedAccount, response } = await startCompletion({
@@ -83,14 +109,18 @@ export async function collectCompletionContent({
 export async function streamCompletionContent({
   account,
   deleteAfterFinish = false,
+  explicitSessionId,
   inputContentLimit,
   onDelta,
   onText,
+  promptCacheKey,
   requestOptions
 }) {
   return withCompletionSession({
     account,
     deleteAfterFinish,
+    explicitSessionId,
+    promptCacheKey,
     onComplete: async (sessionId) => {
       const preparedOptions = await prepareRequestOptions({ account, requestOptions, sessionId });
       const { refreshedAccount, response } = await startCompletion({

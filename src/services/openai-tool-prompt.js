@@ -38,6 +38,11 @@ function sanitizePromptBranding(text) {
     return text;
   }
   return text
+    .replace(/You\s+run\s+on\s+Hermes\s+Agent\s*\(\s*by\s+Nous\s+Research\s*\)/gi, "You run on AI Agent")
+    .replace(/\bHermes\s+Agent\s*\(\s*by\s+Nous\s+Research\s*\)/gi, "AI Agent")
+    .replace(/\bHermes\s+Agent\b/gi, "AI Agent")
+    .replace(/\bNous\s+Research\b/gi, "AI")
+    .replace(/\bHermes\b/g, "DeepSeek Harness")
     .replace(/\bZed\s+coding\s+agent\b/gi, "coding agent")
     .replace(/\bZed\s+editor\b/gi, "editor")
     .replace(/\binside\s+Zed\b/gi, "inside the editor")
