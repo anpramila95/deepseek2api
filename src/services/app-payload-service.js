@@ -28,6 +28,8 @@ export function toPublicAccount(account) {
     lastSettingsReport: account.lastSettingsReport ?? null,
     captchaState: account.captchaState ?? null,
     proxyConfigured: Boolean(account.proxy),
+    rateLimitedAt: account.rateLimitedAt ?? null,
+    lastError: account.lastError ?? null,
     updatedAt: account.updatedAt
   };
 }

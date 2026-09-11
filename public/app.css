@@ -1848,6 +1848,58 @@ details.message-section.thinking > [data-section-text] {
   background: var(--danger);
 }
 
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.85rem;
+}
+
+.data-table th {
+  padding: 10px 12px;
+  border-bottom: 2px solid rgba(128, 128, 128, 0.2);
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+.data-table td {
+  padding: 12px;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.15);
+  vertical-align: middle;
+}
+
+.account-row.selected-row {
+  background: rgba(255, 120, 0, 0.08);
+}
+
+.account-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.account-log-danger {
+  color: var(--danger, #ff4d4f);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.account-log-warn {
+  color: var(--warning, #faad14);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.button-small {
+  padding: 4px 10px;
+  font-size: 0.75rem;
+}
+
 .inline-actions,
 .form-actions {
   align-items: center;

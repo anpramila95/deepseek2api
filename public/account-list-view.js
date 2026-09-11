@@ -18,77 +18,50 @@ function formatDateTime(value) {
   }).format(new Date(value));
 }
 
-function renderAccountMeta(account, isAdmin) {
-  const detail = resolveAccountDetail(account);
-  const owner = isAdmin ? formatOwner(account.ownerId) : "";
-  return [detail, owner].filter(Boolean).join(" | ");
-}
-
-function renderStatusText(account, selectedAccountId) {
-  const isSelected = account.id === selectedAccountId;
-  const isCaptcha = account.status === "captcha_required" || Boolean(account.captchaState?.triggered);
-  const isDead = account.status === "offline" || isCaptcha;
-
-  if (isDead) {
-    return { text: "Không hoạt động", className: "chip chip-danger" };
-  }
-
-  if (isSelected) {
-    return { text: "Đang chọn", className: "chip chip-primary" };
-  }
-
-  return { text: "Sẵn sàng", className: "chip chip-success" };
-}
-
 function resolveHealth(account) {
+  if (account.status === "banned" || account.status === "disabled") {
+    return { className: "danger", label: "Đã bị khóa / Banned", badgeClass: "chip chip-danger" };
+  }
+
+  if (account.rateLimitedAt) {
+    const elapsed = Date.now() - Date.parse(account.rateLimitedAt);
+    const cooldownMs = 3_600_000;
+    if (Number.isFinite(elapsed) && elapsed < cooldownMs) {
+      const remainingMin = Math.ceil((cooldownMs - elapsed) / 60_000);
+      return {
+        className: "warn",
+        label: `Bị 429 (còn ${remainingMin} phút)`,
+        badgeClass: "chip chip-warn",
+        rateLimited: true
+      };
+    }
+  }
+
   if (account.captchaState?.triggered || account.status === "captcha_required") {
-    return { className: "danger", label: "Yêu cầu captcha" };
+    return { className: "danger", label: "Yêu cầu Captcha", badgeClass: "chip chip-danger" };
   }
 
   if (!account.status || account.status === "online") {
     return account.settingsReported && account.dataOptimizationDisabled
-      ? { className: "ok", label: "Hoạt động tốt" }
-      : { className: "warn", label: "Chờ xác nhận cài đặt" };
+      ? { className: "ok", label: "Hoạt động tốt", badgeClass: "chip chip-success" }
+      : { className: "warn", label: "Chờ xác nhận", badgeClass: "chip chip-warn" };
   }
 
-  if (account.status === "rate_limited") {
-    return { className: "warn", label: "Giới hạn tần suất" };
-  }
-
-  return { className: "danger", label: "Không hoạt động" };
+  return { className: "danger", label: "Không hoạt động", badgeClass: "chip chip-danger" };
 }
 
-function renderCaptchaPanel(account) {
-  const state = account.captchaState ?? {};
-  if (!state.triggered) {
-    return "";
+function renderStatusBadge(account, selectedAccountId, health) {
+  if (account.id === selectedAccountId) {
+    return `<span class="chip chip-primary">Đang chọn</span>`;
   }
-
-  return `
-    <div class="captcha-panel">
-      <div class="captcha-copy">
-        <strong>Chờ xử lý CAPTCHA</strong>
-        <span>${escapeHtml(state.instruction || "Chưa nhận được hướng dẫn, vui lòng hoàn thành xác minh thủ công rồi nhập rid.")}</span>
-        <span class="muted">Thời gian kích hoạt: ${escapeHtml(formatDateTime(state.triggerTime))}</span>
-        ${state.lastError ? `<span class="captcha-error">${escapeHtml(state.lastError)}</span>` : ""}
-      </div>
-      ${state.imageUrl ? `<img class="captcha-preview" src="${escapeHtml(state.imageUrl)}" alt="Hình ảnh CAPTCHA">` : ""}
-      <form class="captcha-form" data-captcha-form="${escapeHtml(account.id)}">
-        <label class="input-group compact-field"><span>Tọa độ</span><input data-captcha-coordinates placeholder="Ví dụ: 320,145"></label>
-        <label class="input-group compact-field"><span>rid</span><input data-captcha-rid placeholder="rid sau khi xác minh"></label>
-        <button type="submit" class="button-primary" data-ripple>Gửi</button>
-        <button type="button" class="button-secondary" data-captcha-retry="${escapeHtml(account.id)}" data-ripple>Tự động thử lại</button>
-        <button type="button" class="button-ghost" data-captcha-clear="${escapeHtml(account.id)}" data-ripple>Bỏ qua</button>
-      </form>
-    </div>
-  `;
+  return `<span class="${escapeHtml(health.badgeClass)}">${escapeHtml(health.label)}</span>`;
 }
 
 function renderCheckButton(accountId) {
   return `
     <button
       type="button"
-      class="button-ghost"
+      class="button-ghost button-small"
       data-account-check-id="${escapeHtml(accountId)}"
       data-ripple
     >
@@ -101,7 +74,7 @@ function renderDeleteButton(accountId) {
   return `
     <button
       type="button"
-      class="button-ghost button-danger"
+      class="button-ghost button-danger button-small"
       data-account-delete-id="${escapeHtml(accountId)}"
       data-ripple
     >
@@ -110,31 +83,106 @@ function renderDeleteButton(accountId) {
   `;
 }
 
-function renderAccountItem(account, options) {
-  const { isAdmin, selectedAccountId } = options;
-  const meta = renderAccountMeta(account, isAdmin);
-  const selectedClass = account.id === selectedAccountId ? " active" : "";
-  const health = resolveHealth(account);
-
-  const statusBadge = renderStatusText(account, selectedAccountId);
+function renderCaptchaPanel(account) {
+  const state = account.captchaState ?? {};
+  if (!state.triggered) {
+    return "";
+  }
 
   return `
-    <article class="account-item${selectedClass} account-health-${health.className}">
-      <div class="account-info">
-        <div class="account-title-row">
-          <span class="health-dot ${health.className}"></span>
-          <strong>${escapeHtml(resolveAccountLabel(account))}</strong>
-        </div>
-        <span class="account-meta">${escapeHtml(meta)}</span>
-        <span class="account-meta">Trạng thái: ${escapeHtml(health.label)} · Proxy: ${account.proxyConfigured ? "Đã gắn" : "Không dùng"} · Tối ưu dữ liệu: ${account.dataOptimizationDisabled ? "Đã tắt" : "Chưa xác nhận"} · Settings: ${account.settingsReported ? "Đã báo cáo" : "Chưa báo cáo"} · Cập nhật: ${escapeHtml(formatDateTime(account.updatedAt))}</span>
+    <div class="captcha-panel mt-2">
+      <div class="captcha-copy">
+        <strong>Chờ xử lý CAPTCHA</strong>
+        <span>${escapeHtml(state.instruction || "Chưa nhận được hướng dẫn, vui lòng hoàn thành xác minh thủ công rồi nhập rid.")}</span>
+        <span class="muted">Thời gian kích hoạt: ${escapeHtml(formatDateTime(state.triggerTime))}</span>
+        ${state.lastError ? `<span class="captcha-error">${escapeHtml(state.lastError)}</span>` : ""}
       </div>
-      <div class="inline-actions account-actions">
-        <span class="${escapeHtml(statusBadge.className)}">${escapeHtml(statusBadge.text)}</span>
-        ${renderCheckButton(account.id)}
-        ${renderDeleteButton(account.id)}
-      </div>
-      ${renderCaptchaPanel(account)}
-    </article>
+      ${state.imageUrl ? `<img class="captcha-preview" src="${escapeHtml(state.imageUrl)}" alt="Hình ảnh CAPTCHA">` : ""}
+      <form class="captcha-form" data-captcha-form="${escapeHtml(account.id)}">
+        <label class="input-group compact-field"><span>Tọa độ</span><input data-captcha-coordinates placeholder="Ví dụ: 320,145"></label>
+        <label class="input-group compact-field"><span>rid</span><input data-captcha-rid placeholder="rid sau khi xác minh"></label>
+        <button type="submit" class="button-primary button-small" data-ripple>Gửi</button>
+        <button type="button" class="button-secondary button-small" data-captcha-retry="${escapeHtml(account.id)}" data-ripple>Thử lại</button>
+        <button type="button" class="button-ghost button-small" data-captcha-clear="${escapeHtml(account.id)}" data-ripple>Bỏ qua</button>
+      </form>
+    </div>
+  `;
+}
+
+function renderAccountTable(accounts, options) {
+  const { isAdmin, selectedAccountId } = options;
+
+  const rows = accounts.map((account, index) => {
+    const health = resolveHealth(account);
+    const label = resolveAccountLabel(account);
+    const detail = resolveAccountDetail(account);
+    const owner = isAdmin ? formatOwner(account.ownerId) : "";
+    const isSelected = account.id === selectedAccountId;
+    const rowClass = isSelected ? " selected-row" : "";
+
+    let logMessage = "";
+    if (account.rateLimitedAt) {
+      logMessage = `<div class="account-log-danger">429 Lúc: ${escapeHtml(formatDateTime(account.rateLimitedAt))}</div>`;
+    } else if (account.captchaState?.triggered) {
+      logMessage = `<div class="account-log-warn">Captcha Lúc: ${escapeHtml(formatDateTime(account.captchaState.triggerTime))}</div>`;
+    } else if (account.lastError) {
+      logMessage = `<div class="account-log-danger">${escapeHtml(account.lastError)}</div>`;
+    } else {
+      logMessage = `<span class="muted">Bình thường</span>`;
+    }
+
+    return `
+      <tr class="account-row${rowClass}">
+        <td class="text-center font-mono font-bold">${index + 1}</td>
+        <td>
+          <div class="account-name-cell">
+            <span class="health-dot ${health.className}"></span>
+            <strong>${escapeHtml(label)}</strong>
+          </div>
+          ${detail && detail !== label ? `<small class="muted block">${escapeHtml(detail)}</small>` : ""}
+        </td>
+        <td>
+          ${renderStatusBadge(account, selectedAccountId, health)}
+        </td>
+        <td>
+          <div class="account-log-cell">
+            ${logMessage}
+            ${renderCaptchaPanel(account)}
+          </div>
+        </td>
+        <td>
+          <small class="muted block">Proxy: ${account.proxyConfigured ? "Đã gắn" : "Không"}</small>
+          <small class="muted block">Cập nhật: ${escapeHtml(formatDateTime(account.updatedAt))}</small>
+          ${owner ? `<small class="muted block">${escapeHtml(owner)}</small>` : ""}
+        </td>
+        <td class="text-right">
+          <div class="inline-actions">
+            ${renderCheckButton(account.id)}
+            ${renderDeleteButton(account.id)}
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join("");
+
+  return `
+    <div class="table-responsive">
+      <table class="data-table accounts-table">
+        <thead>
+          <tr>
+            <th class="text-center" style="width: 50px;">STT</th>
+            <th>Tài khoản</th>
+            <th style="width: 150px;">Trạng thái</th>
+            <th>Chi tiết Log / Lỗi</th>
+            <th style="width: 170px;">Thông tin</th>
+            <th class="text-right" style="width: 140px;">Thao tác</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+    </div>
   `;
 }
 
@@ -172,9 +220,7 @@ export function renderAccountListView(options) {
   } = options;
 
   container.innerHTML = accounts.length
-    ? accounts
-      .map((account) => renderAccountItem(account, { isAdmin, selectedAccountId }))
-      .join("")
+    ? renderAccountTable(accounts, { isAdmin, selectedAccountId })
     : createEmptyState("Chưa có tài khoản", "Vui lòng liên kết một tài khoản trước.");
 
   bindDeleteActions(container, accounts, onDeleteAccount);
