@@ -9,7 +9,6 @@ import {
 import {
   assertNoLegacySearchOptions,
   resolveOpenAiModel,
-  resolveVisionModel,
 } from "./openai-request.js";
 import { appendExpertPromptSuffix } from "./expert-prompt-service.js";
 import { withDeepseekMessageFrequencyRetry } from "./deepseek-frequency-retry.js";
@@ -76,14 +75,7 @@ export function resolveCompletionRequest({ body, ownerId, toolCallsEnabled }) {
     ? body.ref_file_ids.filter(Boolean)
     : [];
 
-  if (imageInputs.length && model.modelType !== "vision") {
-    model = resolveVisionModel(model);
-  }
-
-  if (
-    (imageInputs.length || refFileIds.length) &&
-    model.supportsUploads === false
-  ) {
+  if (refFileIds.length && model.supportsUploads === false) {
     throw createOpenAiError(400, "Expert models do not support file uploads");
   }
 

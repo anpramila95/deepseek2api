@@ -10,7 +10,8 @@ function startCompletion({ account, inputContentLimit, requestOptions, sessionId
     body: {
       chat_session_id: sessionId,
       parent_message_id: null,
-      model_type: requestOptions.model.modelType,
+      //model_type: requestOptions.model.modelType,
+      model_type: null,
       prompt: requestOptions.prompt,
       ref_file_ids: requestOptions.refFileIds ?? [],
       thinking_enabled: requestOptions.model.thinkingEnabled,

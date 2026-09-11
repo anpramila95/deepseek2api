@@ -33,14 +33,98 @@ function parseJsonObject(text) {
 }
 
 function normalizeDsmlToolTags(text) {
-  return toStringSafe(text)
-    .replace(/<\|\s*DSML\s*\|>\s*(?:tool\s+)?name\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))\s*>/gi, (_match, doubleName, singleName, bareName) => {
+  let source = toStringSafe(text).replace(
+    /<[/|｜]*\s*DSML\s*[/|｜]+\s*(?:tool\s+)?name\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))\s*>/gi,
+    (_match, doubleName, singleName, bareName) => {
       const name = doubleName ?? singleName ?? bareName ?? "";
       return `<tool name="${name}">`;
-    })
-    .replace(/<\|\s*DSML\s*\|>\s*\/?>/gi, "")
-    .replace(/<\|\s*DSML\s*\|>\s*\/\s*>/gi, "</tool>")
-    .replace(/<\|\s*DSML\s*\|>\s*\|>/gi, "</tool>");
+    }
+  );
+
+  const invokeMarker = /<[^>]*DSML[^>]*invoke\s+name\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))\s*>/gi;
+  const closeMarker = /<[^>]*DSML[^>]*parameter\s*>/gi;
+  const dsmlMarker = /<[^>]*DSML[^>]*(?:parameter|invoke|calls?)[^>]*>/gi;
+  let openTools = 0;
+  source = source.replace(/<\/?tool\b[^>]*>/gi, (tag) => {
+    if (/^<\/tool\b/i.test(tag)) {
+      openTools = Math.max(0, openTools - 1);
+    } else {
+      openTools += 1;
+    }
+    return tag;
+  });
+
+  source = source.replace(invokeMarker, (_match, doubleName, singleName, bareName) => {
+    const name = doubleName ?? singleName ?? bareName ?? "";
+    openTools += 1;
+    return `<tool name="${name}">`;
+  });
+  source = source.replace(closeMarker, () => {
+    if (openTools > 0) {
+      openTools -= 1;
+      return "</tool>";
+    }
+    return "";
+  });
+  source = source.replace(dsmlMarker, "");
+
+  return source;
+}
+
+export function normalizeDsmlTokenVariants(text) {
+  const doublePipe = "(?:\\|\\s*\\||｜\\s*｜)";
+  let result = toStringSafe(text)
+    .replace(/[“”]/g, '"')
+    .replace(/[‘’]/g, "'");
+
+  // <||DSML||tag> or < | | DSML | | tag > -> <|DSML|tag>
+  result = result.replace(
+    new RegExp(`<\\s*(/?)\\s*${doublePipe}\\s*DSML\\s*${doublePipe}\\s*([A-Za-z_][\\w]*)\\s*>`, "gi"),
+    "<$1|DSML|$2>"
+  );
+
+  // <||DSML||tag ... -> <|DSML|tag ...
+  result = result.replace(
+    new RegExp(`<\\s*(/?)\\s*${doublePipe}\\s*DSML\\s*${doublePipe}\\s*([A-Za-z_][\\w]*)\\s+`, "gi"),
+    "<$1|DSML|$2 "
+  );
+
+  // Normalize tool_calls / calls synonyms
+  result = result.replace(/<\s*(\/?)\s*\|DSML\|calls\b/gi, "<$1|DSML|tool_calls");
+
+  return result;
+}
+
+function parseDsmlParameterCalls(text) {
+  const output = [];
+  const normalized = normalizeDsmlTokenVariants(text);
+  const pattern = /<\|DSML\|invoke\s+name\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))\s*>([\s\S]*?)<\/?\|DSML\|invoke\s*>/gi;
+  let match;
+  while ((match = pattern.exec(normalized))) {
+    const toolName = match[1] ?? match[2] ?? match[3] ?? "";
+    const body = match[4] ?? "";
+    const input = {};
+    const parameterPattern = /<\|DSML\|parameter\s+name\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))[^>]*>([\s\S]*?)<\/?\|DSML\|parameter\s*>/gi;
+    let parameter;
+    while ((parameter = parameterPattern.exec(body))) {
+      const parameterName = parameter[1] ?? parameter[2] ?? parameter[3] ?? "";
+      if (parameterName) {
+        let val = parameter[4] ?? "";
+        val = val.replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+        if (/^(?:\{[\s\S]*\}|\[[\s\S]*\]|true|false|\d+(?:\.\d+)?)$/i.test(val.trim())) {
+          try {
+            input[parameterName] = JSON.parse(val.trim());
+          } catch {
+            input[parameterName] = val;
+          }
+        } else {
+          input[parameterName] = val;
+        }
+      }
+    }
+    if (toolName && Object.keys(input).length) output.push({ toolName, input });
+  }
+  return output;
 }
 
 function createParsedToolCall(name, input) {
@@ -135,6 +219,14 @@ function filterAllowedToolCalls(calls, allowedToolNames) {
 }
 
 export function parseToolCallsFromText(text, allowedToolNames = []) {
+  if (!text) return [];
+
+  const dsmlCalls = parseDsmlParameterCalls(text)
+    .map(({ toolName, input }) => createParsedToolCall(toolName, input));
+  if (dsmlCalls.length) {
+    return filterAllowedToolCalls(dsmlCalls, allowedToolNames);
+  }
+
   const source = normalizeDsmlToolTags(text);
   if (!source) return [];
 

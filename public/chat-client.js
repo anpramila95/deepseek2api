@@ -85,7 +85,8 @@ export async function requestChatCompletion(options) {
     headers: getProxyHeaders(accountId, { "content-type": "application/json" }),
     body: JSON.stringify({
       chat_session_id: sessionId,
-      model_type: modelType,
+      //model_type: modelType,
+      model_type: null,
       parent_message_id: parentMessageId,
       preempt: false,
       prompt,

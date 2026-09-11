@@ -194,15 +194,16 @@ export function buildToolPrompt(policy, tools) {
     "4) One tag is one call. Do not add any outer wrapper.",
     "5) Put each call in its own complete tag; never combine multiple calls in one tag.",
     "6) Emit only calls that can run now. Wait for tool results from the environment before proceeding.",
-    "7) Do not use markdown fences. If no tool is needed, answer normally without a tool tag."
+    "7) Do not use markdown fences. If no tool is needed, answer normally without a tool tag.",
+    "8) NEVER output DSML tags or markers such as </｜｜DSML｜｜ invoke>, <｜｜DSML｜｜ invoke name=\"read_file\">, parameter, invoke, or calls. Use only the exact <tool name=\"TOOL_NAME\">{...}</tool> format above."
   ].join("\n");
 
   if (policy.mode === "required") {
-    prompt += "\n8) For this response, you MUST call at least one tool.";
+    prompt += "\n9) For this response, you MUST call at least one tool.";
   }
 
   if (policy.mode === "forced") {
-    prompt += `\n8) For this response, you MUST call exactly this tool: ${policy.forcedName}.`;
+    prompt += `\n9) For this response, you MUST call exactly this tool: ${policy.forcedName}.`;
   }
 
   return prompt;
@@ -229,29 +230,12 @@ function injectToolPrompt(messages, toolPrompt) {
   ];
 }
 
-function getSystemTimeInstruction() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth() + 1;
-  const day = now.getDate();
-  const currentDateStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-  return [
-    `Current date: ${currentDateStr} (Year: ${year}, Month: ${month}).`,
-    `You are DeepSeek-V4. Your knowledge cutoff is current up to ${year}-${String(month).padStart(2, "0")}.`,
-    `Never state that your training knowledge cutoff is May 2025 or that you are DeepSeek-V3.`
-  ].join(" ");
-}
 
 export function buildOpenAiPrompt({ messages, toolChoice, tools }) {
   const policy = resolveToolChoicePolicy({ tools, toolChoice });
   const normalizedMessages = normalizeMessagesForPrompt(messages);
-  const timeInstruction = getSystemTimeInstruction();
-  const withTimeMessages = [
-    { role: "system", content: timeInstruction },
-    ...normalizedMessages
-  ];
   const toolPrompt = buildToolPrompt(policy, tools ?? []);
-  const promptMessages = injectToolPrompt(withTimeMessages, toolPrompt);
+  const promptMessages = injectToolPrompt(normalizedMessages, toolPrompt);
   if (toolPrompt && promptMessages.some((message) => message.role === "tool")) {
     promptMessages.push({
       role: "system",
