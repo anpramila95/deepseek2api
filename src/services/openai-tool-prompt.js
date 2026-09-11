@@ -137,10 +137,27 @@ function normalizeMessageRole(role) {
   return role === "developer" ? "system" : role;
 }
 
+function compactOldToolResult(content) {
+  if (typeof content !== "string" || content.length < 500) {
+    return content;
+  }
+
+  const lines = content.split("\n");
+  if (lines.length > 20) {
+    const head = lines.slice(0, 5).join("\n");
+    const tail = lines.slice(-3).join("\n");
+    return `${head}\n\n[... Truncated ${lines.length - 8} lines of older tool output to optimize context ...]\n\n${tail}`;
+  }
+
+  const head = content.slice(0, 200);
+  const tail = content.slice(-100);
+  return `${head}\n\n[... Truncated older tool output ...]\n\n${tail}`;
+}
+
 function normalizeMessagesForPrompt(messages) {
   const toolNameById = new Map();
 
-  return (messages ?? []).flatMap((message) => {
+  const rawNormalized = (messages ?? []).flatMap((message) => {
     const role = normalizeMessageRole(toStringSafe(message?.role).trim().toLowerCase() || "user");
 
     if (role === "assistant") {
@@ -154,6 +171,21 @@ function normalizeMessagesForPrompt(messages) {
 
     return [{ role, content: normalizeContentText(message?.content) }];
   });
+
+  // Smart Compaction: Identify older tool messages and prune oversized outputs
+  // Count how many tool messages from the end to keep intact (e.g. last 2 tool calls)
+  let toolCountFromEnd = 0;
+  for (let i = rawNormalized.length - 1; i >= 0; i--) {
+    if (rawNormalized[i].role === "tool") {
+      toolCountFromEnd++;
+      // If it's not among the 2 most recent tool results, prune long text
+      if (toolCountFromEnd > 2) {
+        rawNormalized[i].content = compactOldToolResult(rawNormalized[i].content);
+      }
+    }
+  }
+
+  return rawNormalized;
 }
 
 function formatToolSchema(tool) {
