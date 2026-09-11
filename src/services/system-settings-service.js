@@ -129,6 +129,11 @@ export function getSystemSettings(options = {}) {
     stored.prompt?.inputContentLimit,
     stored.prompt?.chunkLimit
   );
+  const storedRateLimitCooldownMs = firstDefined(
+    stored.rateLimitCooldownMs,
+    stored.rateLimitCooldown,
+    3_600_000
+  );
 
   return {
     captcha: resolveCaptchaSettings(stored.captcha, options),
@@ -137,6 +142,12 @@ export function getSystemSettings(options = {}) {
       config.deepseekCompletion.inputContentLimit,
       1,
       10_000_000
+    ),
+    rateLimitCooldownMs: normalizePositiveInteger(
+      storedRateLimitCooldownMs,
+      3_600_000,
+      0,
+      86_400_000
     ),
     chainOfThoughtOverrideEnabled: normalizeBoolean(
       storedOverrideEnabled,
@@ -196,6 +207,9 @@ export function updateSystemSettings(patch = {}) {
   const nextGlobalProxiesPatch = patch.globalProxies === undefined
     ? {}
     : { globalProxies: normalizeGlobalProxies(patch.globalProxies) };
+  const nextRateLimitCooldownPatch = patch.rateLimitCooldownMs === undefined
+    ? {}
+    : { rateLimitCooldownMs: normalizePositiveInteger(patch.rateLimitCooldownMs, 3_600_000, 0, 86_400_000) };
 
   updateStore((state) => ({
     ...state,
@@ -208,7 +222,8 @@ export function updateSystemSettings(patch = {}) {
       ...nextOverridePatch,
       ...nextToolParsingModePatch,
       ...nextInputContentLimitPatch,
-      ...nextGlobalProxiesPatch
+      ...nextGlobalProxiesPatch,
+      ...nextRateLimitCooldownPatch
     }
   }));
 

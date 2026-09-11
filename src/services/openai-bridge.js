@@ -23,6 +23,8 @@ import {
   hasChatToolingRequest,
 } from "./openai-tool-policy.js";
 import { createOpenAiError } from "./openai-error.js";
+import { invalidatePromptCacheSession } from "./prompt-cache-service.js";
+import { markAccountRateLimited } from "./account-service.js";
 
 function createCompletionId() {
   return `chatcmpl_${randomUUID()}`;
@@ -290,13 +292,22 @@ export async function collectOpenAiResponse({
   const completion = await withDeepseekMessageFrequencyRetry({
     account,
     maxRetries: maxFrequencyRetries,
-    onRetry: onFrequencyRetry,
-    operation: async (activeAccount) => {
+    onRetry: async (retryInfo) => {
+      if (retryInfo?.account?.id) {
+        markAccountRateLimited(retryInfo.account.id);
+      }
+      if (promptCacheKey) {
+        invalidatePromptCacheSession(promptCacheKey);
+      }
+      await onFrequencyRetry?.(retryInfo);
+    },
+    operation: async (activeAccount, { retryCount } = {}) => {
+      const currentSessionId = retryCount > 0 ? null : explicitSessionId;
       const initialCompletion = await collectCompletionContent({
         account: activeAccount,
         deleteAfterFinish,
-        explicitSessionId,
-        promptCacheKey,
+        explicitSessionId: currentSessionId,
+        promptCacheKey: retryCount > 0 ? promptCacheKey : null,
         requestOptions,
       });
       return applyToolParsingMode({
@@ -484,13 +495,22 @@ export async function streamOpenAiResponse(options) {
     await withDeepseekMessageFrequencyRetry({
       account,
       maxRetries: maxFrequencyRetries,
-      onRetry: handleFrequencyRetry,
-      operation: async (activeAccount) => {
+      onRetry: async (retryInfo) => {
+        if (retryInfo?.account?.id) {
+          markAccountRateLimited(retryInfo.account.id);
+        }
+        if (promptCacheKey) {
+          invalidatePromptCacheSession(promptCacheKey);
+        }
+        await handleFrequencyRetry(retryInfo);
+      },
+      operation: async (activeAccount, { retryCount } = {}) => {
+        const currentSessionId = retryCount > 0 ? null : explicitSessionId;
         const streamResult = await streamCompletionContent({
           account: activeAccount,
           deleteAfterFinish,
-          explicitSessionId,
-          promptCacheKey,
+          explicitSessionId: currentSessionId,
+          promptCacheKey: retryCount > 0 ? promptCacheKey : null,
           onDelta: (delta) => {
             if (delta.kind === "thinking") {
               writeSseChunk(

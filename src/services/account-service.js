@@ -1,6 +1,7 @@
 import { updateStore, readStore } from "../storage/store.js";
 import { createId } from "../utils/id.js";
 import { maskIdentifier } from "../utils/privacy.js";
+import { getSystemSettings } from "./system-settings-service.js";
 
 function withUpdatedRecord(account, nextFields) {
   return {
@@ -14,12 +15,35 @@ export function listAccounts() {
   return readStore().accounts;
 }
 
+export function isAccountInRateLimitCooldown(account) {
+  if (!account?.rateLimitedAt) return false;
+  const settings = getSystemSettings();
+  const cooldownMs = settings.rateLimitCooldownMs ?? 3_600_000;
+  const elapsed = Date.now() - Date.parse(account.rateLimitedAt);
+  return Number.isFinite(elapsed) && elapsed < cooldownMs;
+}
+
+export function markAccountRateLimited(accountId) {
+  if (!accountId) return;
+  updateAccountById(accountId, {
+    rateLimitedAt: new Date().toISOString()
+  });
+}
+
+export function clearAccountRateLimited(accountId) {
+  if (!accountId) return;
+  updateAccountById(accountId, {
+    rateLimitedAt: null
+  });
+}
+
 export function isUsableAccount(account) {
   return Boolean(
     account?.id &&
     account?.token &&
     account?.status !== "captcha_required" &&
-    !account?.captchaState?.triggered,
+    !account?.captchaState?.triggered &&
+    !isAccountInRateLimitCooldown(account)
   );
 }
 

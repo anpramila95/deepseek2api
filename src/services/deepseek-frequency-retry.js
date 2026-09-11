@@ -1,7 +1,7 @@
-const MESSAGE_FREQUENCY_PATTERN = /消息发送过于频繁[\s，,、:：]*请稍后重试/;
+const MESSAGE_FREQUENCY_PATTERN = /(?:消息发送过于频繁[\s，,、:：]*请稍后重试|rate.?limit|too many requests|429)/i;
 
 const DEFAULT_MAX_RETRIES = 3;
-const DEFAULT_RETRY_DELAY_MS = 30_000;
+const DEFAULT_RETRY_DELAY_MS = 1_000;
 
 function getErrorMessages(error) {
   const messages = [];
@@ -24,6 +24,7 @@ function wait(milliseconds) {
 }
 
 export function isDeepseekMessageFrequencyError(error) {
+  if (error?.statusCode === 429) return true;
   return getErrorMessages(error).some((message) => MESSAGE_FREQUENCY_PATTERN.test(message));
 }
 
