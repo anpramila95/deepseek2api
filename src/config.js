@@ -67,6 +67,7 @@ const powProtectedRouteSuffixes = Object.freeze([
 ]);
 
 const allowedProxyRouteSuffixes = Object.freeze([
+  "/auth/ticket",
   "/chat/completion",
   "/chat/continue",
   "/chat/create_pow_challenge",
@@ -76,6 +77,8 @@ const allowedProxyRouteSuffixes = Object.freeze([
   "/chat/regenerate",
   "/chat/resume_stream",
   "/chat/stop_stream",
+  "/chat/tts",
+  "/chat/tts/voice",
   "/chat_session/create",
   "/chat_session/delete",
   "/chat_session/delete_all",

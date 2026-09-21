@@ -77,12 +77,15 @@ function normalizeMessageId(value) {
 
 function resolveResponseMessageId(payload) {
   return normalizeMessageId(
-    payload?.response_message_id
+    payload?.v?.response?.message_id
+      ?? payload?.v?.response?.id
+      ?? payload?.response_message_id
       ?? payload?.message_id
       ?? payload?.data?.response_message_id
       ?? payload?.data?.biz_data?.response_message_id
       ?? payload?.data?.biz_data?.ready?.response_message_id
       ?? payload?.data?.biz_data?.message?.message_id
+      ?? payload?.response?.message_id
   );
 }
 

@@ -9,6 +9,7 @@ import { collectOpenAiResponse, streamOpenAiResponse } from "../services/openai-
 import { listOpenAiModels } from "../services/openai-request.js";
 import { recordRequestLog } from "../services/request-log-service.js";
 import { isToolParsingModeEnabledForOwner } from "../services/tool-parsing-mode-service.js";
+import { synthesizeSpeech, resolveAudioContentType } from "../services/deepseek-tts-service.js";
 import { withOwnerRequestLimit } from "../services/request-limit-service.js";
 import { parseJsonBody, readRequestBody, sendError, sendJson } from "../utils/http.js";
 
@@ -30,6 +31,10 @@ function estimateUsage(body, payload = null) {
 
 function isChatCompletionsPath(pathname) {
   return pathname === "/v1/chat/completions" || pathname === "/v1/chat/completions/";
+}
+
+function isSpeechPath(pathname) {
+  return pathname === "/v1/audio/speech" || pathname === "/v1/audio/speech/";
 }
 
 function resolveLimitStatus(error) {
@@ -179,6 +184,91 @@ async function handleChatCompletionsRequest(request, response, apiKeyRecord) {
   });
 }
 
+async function handleSpeechRequest(request, response, apiKeyRecord) {
+  await withOwnerRequestLimit(apiKeyRecord.ownerId, async () => {
+    const startedAt = Date.now();
+    const body = parseJsonBody(await readRequestBody(request)) ?? {};
+
+    const prompt = (body.prompt ?? body.input ?? "").trim();
+    if (!prompt) {
+      sendError(response, 400, "Missing required field: prompt or input");
+      return;
+    }
+
+    const account = takeRoundRobinAccount(apiKeyRecord);
+    if (!account) {
+      recordRequestLog({
+        method: "POST",
+        path: "/v1/audio/speech",
+        model: body.model || "tts-1",
+        ownerId: apiKeyRecord.ownerId,
+        status: 404,
+        durationMs: Date.now() - startedAt,
+        error: "Account not found"
+      });
+      sendError(response, 404, "Account not found");
+      return;
+    }
+
+    const voice = body.voice ?? body.voice_id ?? "echo";
+    const rawFormat = String(body.response_format ?? body.format ?? "opus").toLowerCase();
+    const isBase64Response = rawFormat === "b64" || rawFormat === "base64";
+    const format = isBase64Response ? "opus" : rawFormat;
+
+    try {
+      const { audioBuffer, format: resolvedFormat } = await synthesizeSpeech({
+        account,
+        prompt,
+        voice,
+        format
+      });
+
+      if (isBase64Response) {
+        sendJson(response, 200, {
+          audio: audioBuffer.toString("base64")
+        });
+      } else {
+        const contentType = resolveAudioContentType(resolvedFormat);
+        const ext = resolvedFormat === "mp3" ? "mp3" : (resolvedFormat === "wav" ? "wav" : "ogg");
+        response.writeHead(200, {
+          "content-type": contentType,
+          "content-length": audioBuffer.length,
+          "accept-ranges": "bytes",
+          "content-disposition": `inline; filename="speech.${ext}"`
+        });
+        response.end(audioBuffer);
+      }
+
+      recordRequestLog({
+        method: "POST",
+        path: "/v1/audio/speech",
+        model: body.model || "tts-1",
+        ownerId: apiKeyRecord.ownerId,
+        accountId: account.id,
+        status: 200,
+        durationMs: Date.now() - startedAt,
+        usage: {
+          promptTokens: Math.ceil(prompt.length / 4),
+          completionTokens: 0,
+          totalTokens: Math.ceil(prompt.length / 4)
+        }
+      });
+    } catch (error) {
+      recordRequestLog({
+        method: "POST",
+        path: "/v1/audio/speech",
+        model: body.model || "tts-1",
+        ownerId: apiKeyRecord.ownerId,
+        accountId: account.id,
+        status: error.statusCode ?? 500,
+        durationMs: Date.now() - startedAt,
+        error: error.message
+      });
+      throw error;
+    }
+  });
+}
+
 export async function handleOpenAiRequest(request, response, url) {
   const apiKey = getBearerToken(request);
   const apiKeyRecord = apiKey ? getApiKeyRecord(apiKey) : null;
@@ -198,6 +288,12 @@ export async function handleOpenAiRequest(request, response, url) {
     if (request.method === "POST" && isChatCompletionsPath(url.pathname)) {
       recordApiKeyUsage(apiKeyRecord.id);
       await handleChatCompletionsRequest(request, response, apiKeyRecord);
+      return true;
+    }
+
+    if (request.method === "POST" && isSpeechPath(url.pathname)) {
+      recordApiKeyUsage(apiKeyRecord.id);
+      await handleSpeechRequest(request, response, apiKeyRecord);
       return true;
     }
   } catch (error) {

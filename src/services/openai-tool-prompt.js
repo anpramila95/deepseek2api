@@ -202,6 +202,8 @@ function formatToolSchema(tool) {
   };
 }
 
+const NO_TOOL_PROMPT = "No tools are available in this conversation. Answer directly in normal text. DO NOT invoke or output any tools, function calls, XML tags, or DSML markers (such as <tool>, <execute_code>, <｜｜DSML｜｜ invoke>, parameter, or calls).";
+
 export function buildToolPrompt(policy, tools) {
   const allowed = new Set(policy.allowedToolNames);
   const toolSchemas = tools
@@ -210,7 +212,7 @@ export function buildToolPrompt(policy, tools) {
     .filter(Boolean);
 
   if (!toolSchemas.length) {
-    return "";
+    return NO_TOOL_PROMPT;
   }
 
   let prompt = [
@@ -273,7 +275,7 @@ export function buildOpenAiPrompt({ messages, toolChoice, tools }) {
   const normalizedMessages = normalizeMessagesForPrompt(messages);
   const toolPrompt = buildToolPrompt(policy, tools ?? []);
   const promptMessages = injectToolPrompt(normalizedMessages, toolPrompt);
-  if (toolPrompt && promptMessages.some((message) => message.role === "tool")) {
+  if (policy.allowedToolNames.length > 0 && promptMessages.some((message) => message.role === "tool")) {
     promptMessages.push({
       role: "system",
       content: "The previous tool execution result is available in context. Use it to continue the task. Never quote, reproduce, or expose tool results, file contents, XML tags, TOOL: labels, or ASSISTANT: labels. Never call the same tool with the same arguments twice. A tool result means that call completed. Use existing results before requesting another read. If required information is already present, continue to edit or answer."

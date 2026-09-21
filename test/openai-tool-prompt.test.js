@@ -102,17 +102,20 @@ test("assistant tool-call history is normalized to the compact flat format", () 
     prompt,
     /ASSISTANT: <tool name="weather">\{"city":"Shanghai"\}<\/tool>\n<tool name="local_time">\{"timezone":"Asia\/Shanghai"\}<\/tool>/
   );
-  assert.match(prompt, /TOOL: Tool result for weather:\nsunny/);
-  assert.match(prompt, /TOOL: Tool result for local_time:\n12:00/);
+  assert.match(prompt, /TOOL: sunny/);
+  assert.match(prompt, /TOOL: 12:00/);
 });
 
-test("tool instructions are omitted when tool_choice is none", () => {
-  const { prompt, toolNames } = buildOpenAiPrompt({
+test("no-tool instruction is injected when tool_choice is none or no tools provided", () => {
+  const { prompt, toolNames, toolPrompt } = buildOpenAiPrompt({
     messages: [{ role: "user", content: "Hello" }],
     tools: [WEATHER_TOOL],
     toolChoice: "none"
   });
 
   assert.deepEqual(toolNames, []);
-  assert.equal(prompt, "USER: Hello");
+  assert.match(toolPrompt, /No tools are available in this conversation/);
+  assert.match(prompt, /SYSTEM: No tools are available in this conversation/);
+  assert.match(prompt, /DO NOT invoke or output any tools/);
+  assert.match(prompt, /USER: Hello/);
 });
