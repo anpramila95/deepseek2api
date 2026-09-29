@@ -10,6 +10,7 @@ const LOGIN_DEVICE_ID_PATTERN = /^B[A-Za-z0-9+/=]{80,}$/;
 const CLIENT_DID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const BROWSER_DEVICE_ID_CACHE_TTL_MS = 30 * 60 * 1000;
 const browserDeviceIdCache = new Map();
+const pendingBrowserDeviceIds = new Map();
 
 const DEFAULT_PROFILE_PLATFORMS = Object.freeze(["Windows"]);
 const DEFAULT_CHROME_VERSIONS = Object.freeze(["154"]);
@@ -256,13 +257,32 @@ export async function generateDeepseekDeviceIdFromBrowser(proxy) {
   const cached = browserDeviceIdCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.deviceId;
 
-  const { generateDeepseekDeviceIdFromBrowser: generate } = await import("./open-deepseek.js");
-  const deviceId = await generate(proxy);
-  browserDeviceIdCache.set(cacheKey, {
-    deviceId,
-    expiresAt: Date.now() + BROWSER_DEVICE_ID_CACHE_TTL_MS
-  });
-  return deviceId;
+  const pending = pendingBrowserDeviceIds.get(cacheKey);
+  if (pending) return pending;
+
+  const generation = (async () => {
+    let deviceId;
+    try {
+      const { generateDeepseekDeviceIdFromBrowser: generate } = await import("./open-deepseek.js");
+      deviceId = await generate(proxy);
+    } catch (error) {
+      console.warn(`[DeepSeek Device] Browser SDK unavailable; using generated device ID: ${error.message}`);
+      deviceId = generateDeepseekDeviceId();
+    }
+
+    browserDeviceIdCache.set(cacheKey, {
+      deviceId,
+      expiresAt: Date.now() + BROWSER_DEVICE_ID_CACHE_TTL_MS
+    });
+    return deviceId;
+  })();
+
+  pendingBrowserDeviceIds.set(cacheKey, generation);
+  try {
+    return await generation;
+  } finally {
+    pendingBrowserDeviceIds.delete(cacheKey);
+  }
 }
 
 export function generateClientDid() {

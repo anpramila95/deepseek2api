@@ -75,13 +75,14 @@ function bindWorkspaceActions({
 
     if (mode === "batch") {
       const rawText = els["account-batch-text"]?.value.trim() ?? "";
+      const deviceId = els["account-device-id"]?.value.trim() ?? "";
       if (!rawText) {
         setStatus(els["account-status"], "Vui lòng nhập nội dung hoặc tải lên file danh sách tài khoản.");
         return;
       }
       setStatus(els["account-status"], "Đang xử lý nhập hàng loạt...");
       try {
-        const result = await onBatchImportAccounts({ rawText });
+        const result = await onBatchImportAccounts({ rawText, deviceId });
         const errorInfo = result.errors?.length ? ` (${result.errors.length} lỗi)` : "";
         setStatus(
           els["account-status"],
@@ -96,6 +97,7 @@ function bindWorkspaceActions({
     setStatus(els["account-status"], "Đang liên kết...");
 
     const username = els["account-username"]?.value.trim() ?? "";
+    const deviceId = els["account-device-id"]?.value.trim() ?? "";
     const password = els["account-password"]?.value ?? "";
     const rawJson = els["account-raw-json"]?.value.trim() ?? "";
     const proxy = els["account-proxy"]?.value.trim() || els["account-proxy-json"]?.value.trim() || "";
@@ -105,9 +107,11 @@ function bindWorkspaceActions({
         password,
         username,
         rawJson,
-        proxy
+        proxy,
+        deviceId
       });
       if (els["account-username"]) els["account-username"].value = "";
+      if (els["account-device-id"]) els["account-device-id"].value = "";
       if (els["account-password"]) els["account-password"].value = "";
       if (els["account-raw-json"]) els["account-raw-json"].value = "";
       if (els["account-proxy"]) els["account-proxy"].value = "";

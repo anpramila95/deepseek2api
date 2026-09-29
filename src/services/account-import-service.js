@@ -256,7 +256,7 @@ export function parseImportItems(rawInput) {
   return [];
 }
 
-export async function batchImportAccountsForOwner({ ownerId, rawInput, defaultProxy }) {
+export async function batchImportAccountsForOwner({ ownerId, rawInput, defaultProxy, deviceId: defaultDeviceId }) {
   const items = parseImportItems(rawInput);
   if (!items.length) {
     throw new Error("Không tìm thấy tài khoản nào để nhập.");
@@ -277,7 +277,7 @@ export async function batchImportAccountsForOwner({ ownerId, rawInput, defaultPr
     const proxy = item.proxy || defaultProxy || "";
     const token = (item.token || item.user?.token || item.biz_data?.user?.token || "").trim();
 
-    const deviceId = await generateDeepseekDeviceIdFromBrowser(proxy);
+    const deviceId = defaultDeviceId || await generateDeepseekDeviceIdFromBrowser(proxy);
     try {
       let saved = null;
       if (emailOrLogin && password) {

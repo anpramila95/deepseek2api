@@ -103,12 +103,13 @@ export function createAppServices(options) {
     await loadSessions();
   }
 
-  async function addAccount({ password, username, rawJson, proxy }) {
+  async function addAccount({ password, username, rawJson, proxy, deviceId }) {
     const payload = await postJson("/api/accounts", {
       username,
       password,
       rawJson,
-      proxy
+      proxy,
+      deviceId
     });
 
     if (els["account-password"]) els["account-password"].value = "";
@@ -117,10 +118,11 @@ export function createAppServices(options) {
     await bootstrapWithRevealedApiKeys();
   }
 
-  async function batchImportAccounts({ rawText, proxy }) {
+  async function batchImportAccounts({ rawText, proxy, deviceId }) {
     const payload = await postJson("/api/accounts/batch-import", {
       rawText,
-      proxy
+      proxy,
+      deviceId
     });
 
     if (els["account-batch-text"]) els["account-batch-text"].value = "";

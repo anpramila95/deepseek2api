@@ -93,7 +93,8 @@ async function handleAccountCreation(request, response, session) {
       ownerId: session.ownerId,
       loginValue: body.username,
       password: body.password,
-      proxy: body.proxy
+      proxy: body.proxy,
+      deviceId: body.deviceId
     });
     console.error(`[API /api/accounts] Account creation succeeded for "${maskedUser}" (account ID: ${account.id})`);
     sendJson(response, 200, { account: toPublicAccount(account) });
@@ -249,7 +250,8 @@ export async function handlePrivateApiRequest({ request, response, session, url 
       const result = await batchImportAccountsForOwner({
         ownerId: session.ownerId,
         rawInput: body.accounts || body.rawText,
-        defaultProxy: body.proxy
+        defaultProxy: body.proxy,
+        deviceId: body.deviceId
       });
       sendJson(response, 200, {
         ...result,

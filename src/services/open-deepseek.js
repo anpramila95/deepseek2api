@@ -16,8 +16,6 @@ export async function generateDeepseekDeviceIdFromBrowser(proxy) {
   const browser = await launch({
     headless: true,
     humanize: true,
-    timezone: "Asia/Ho_Chi_Minh",
-    locale: "vi-VN",
     ...(proxy ? { proxy: resolveBrowserProxy(proxy) } : {})
   });
 
@@ -43,17 +41,21 @@ export async function generateDeepseekDeviceIdFromBrowser(proxy) {
             if (!sdk || typeof sdk.getDeviceId !== "function") return;
 
             try {
-              const res = sdk.getDeviceId((id) => {
-                if (id) resolve(id);
-              });
-
+              // DeepSeek SDK returns device ID directly when called without args.
+              const res = sdk.getDeviceId();
               if (res && typeof res.then === "function") {
                 res.then((id) => id && resolve(id));
               } else if (typeof res === "string" && res.length > 5) {
                 resolve(res);
+              } else {
+                sdk.getDeviceId((id) => id && resolve(id));
               }
             } catch {
-              // SDK chưa sẵn sàng, chờ lượt polling tiếp theo.
+              try {
+                sdk.getDeviceId((id) => id && resolve(id));
+              } catch {
+                // SDK chưa sẵn sàng, chờ lượt polling tiếp theo.
+              }
             }
           });
         },

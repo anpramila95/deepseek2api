@@ -42,7 +42,7 @@ export const INITIAL_STATE = Object.freeze({
 });
 
 export const ELEMENT_IDS = [
-  "account-form", "account-list", "account-password", "account-proxy", "account-proxy-json", "account-raw-json", "account-batch-text", "account-import-file", "account-import-file-name", "account-select", "account-status", "account-username",
+  "account-form", "account-list", "account-password", "account-device-id", "account-proxy", "account-proxy-json", "account-raw-json", "account-batch-text", "account-import-file", "account-import-file-name", "account-select", "account-status", "account-username",
   "check-accounts-button", "export-accounts-button",
   "active-theme-label", "admin-invite-form", "admin-invite-count", "admin-invite-list",
   "admin-invite-status", "admin-register-hint", "admin-registration-form", "admin-registration-status",
