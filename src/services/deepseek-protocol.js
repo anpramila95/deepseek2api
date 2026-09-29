@@ -105,9 +105,9 @@ export function createProtocolRequestContext(account, path, { method = "GET" } =
     traceId,
     targetPath: resolveDeepseekApiPath(path),
     headers: createDeepseekClientHeaders(profile, {
-      accept: "application/json, text/plain, */*",
+      accept: "*/*",
       priority: "u=1, i",
-      referer: `${origin}/`,
+      referer: `${origin}/sign_in`,
       "sec-fetch-dest": "empty",
       "sec-fetch-mode": "cors",
       "sec-fetch-site": "same-origin",

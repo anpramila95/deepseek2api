@@ -8,9 +8,11 @@ import { config } from "../config.js";
 // wider lower bound keeps older local fixtures readable during migration.
 const LOGIN_DEVICE_ID_PATTERN = /^B[A-Za-z0-9+/=]{80,}$/;
 const CLIENT_DID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const BROWSER_DEVICE_ID_CACHE_TTL_MS = 30 * 60 * 1000;
+const browserDeviceIdCache = new Map();
 
-const DEFAULT_PROFILE_PLATFORMS = Object.freeze(["Windows", "macOS", "Linux"]);
-const DEFAULT_CHROME_VERSIONS = Object.freeze(["149", "150", "151"]);
+const DEFAULT_PROFILE_PLATFORMS = Object.freeze(["Windows"]);
+const DEFAULT_CHROME_VERSIONS = Object.freeze(["154"]);
 const DEFAULT_CLIENT_SOURCES = Object.freeze(["chat-web"]);
 const DEFAULT_SCREEN_SIZES = Object.freeze([
   [1920, 1080],
@@ -53,9 +55,9 @@ const DEFAULT_TOUCH_POINTS = Object.freeze({
 });
 const DEFAULT_LOCALE_PROFILES = Object.freeze([
   Object.freeze({
-    locale: "zh_CN",
-    browserLocale: "zh-CN",
-    acceptLanguage: "zh-CN,zh;q=0.9,en;q=0.8",
+    locale: "en_US",
+    browserLocale: "en-US",
+    acceptLanguage: "en-US,en;q=0.9,vi;q=0.8",
     timezoneOffset: "28800"
   })
 ]);
@@ -245,8 +247,22 @@ function normalizeClientDid(value, fallbackSeed = "") {
 }
 
 export function generateDeepseekDeviceId() {
-  // 66 bytes -> 88 base64 characters, prefixed with the web client's marker.
-  return `B${randomBytes(66).toString("base64")}`;
+  // Match web device ID format: B + base64-encoded 64 random bytes.
+  return `B${randomBytes(64).toString("base64")}`;
+}
+
+export async function generateDeepseekDeviceIdFromBrowser(proxy) {
+  const cacheKey = String(proxy ?? "").trim();
+  const cached = browserDeviceIdCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.deviceId;
+
+  const { generateDeepseekDeviceIdFromBrowser: generate } = await import("./open-deepseek.js");
+  const deviceId = await generate(proxy);
+  browserDeviceIdCache.set(cacheKey, {
+    deviceId,
+    expiresAt: Date.now() + BROWSER_DEVICE_ID_CACHE_TTL_MS
+  });
+  return deviceId;
 }
 
 export function generateClientDid() {
@@ -272,14 +288,13 @@ function createChromeUserAgent(platform, versions = DEFAULT_CHROME_VERSIONS, see
   return `Mozilla/5.0 (${platformToken}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${version} Safari/537.36`;
 }
 
-function createChromeClientHints(userAgent, seed) {
+function createChromeClientHints(userAgent) {
   const version = userAgent.match(/Chrome\/(\d+)/i)?.[1];
   if (!version) {
     return "";
   }
 
-  const grease = seededChoice(CLIENT_HINT_GREASE_BRANDS, `${seed}:client-hint-grease`);
-  return `"${grease.brand}";v="${grease.version}", "Chromium";v="${version}", "Google Chrome";v="${version}"`;
+  return `"Chromium";v="${version}", "Brave";v="${version}", "Not A(Brand";v="99"`;
 }
 
 function createFingerprint({ hostPlatform, locale, timezoneOffset, input = {}, seed = "" }) {
@@ -355,8 +370,8 @@ export function createSimulatedClientProfile(input = {}) {
   );
   const identitySeed = `${clientDid}:${loginDeviceId}`;
   const platform = normalizeString(input.platform ?? config.deepseekHeaders.clientPlatform, "web");
-  const profilePlatforms = normalizeArray(config.deepseekProfile?.platforms, DEFAULT_PROFILE_PLATFORMS);
-  const chromeVersions = normalizeArray(config.deepseekProfile?.chromeVersions, DEFAULT_CHROME_VERSIONS);
+  const profilePlatforms = DEFAULT_PROFILE_PLATFORMS;
+  const chromeVersions = DEFAULT_CHROME_VERSIONS;
   const sources = normalizeArray(config.deepseekProfile?.sources, DEFAULT_CLIENT_SOURCES);
   const localeProfiles = normalizeLocaleProfiles(config.deepseekProfile?.localeProfiles);
   const localeProfile = seededChoice(localeProfiles, `${identitySeed}:locale-profile`);
@@ -431,7 +446,7 @@ export function createSimulatedClientProfile(input = {}) {
     clientDid,
     os: normalizeString(input.os, platform),
     bundleId: normalizeString(input.bundleId, config.deepseekHeaders.clientBundleId),
-    clientVersion: normalizeString(input.clientVersion, config.deepseekHeaders.clientVersion || "2.3.0"),
+    clientVersion: normalizeString(input.clientVersion, config.deepseekHeaders.clientVersion || "2.5.0"),
     platform,
     locale,
     browserLocale,
@@ -472,14 +487,16 @@ export function createDeepseekClientHeaders(profileSource = {}, extraHeaders = {
   const profile = resolveDeepseekClientProfile(profileSource);
   return removeEmptyHeaders({
     "user-agent": profile.userAgent || config.deepseekHeaders.userAgent || undefined,
-    "sec-ch-ua": profile.secChUa || config.deepseekHeaders.secChUa || undefined,
-    "sec-ch-ua-mobile": profile.secChUaMobile || config.deepseekHeaders.secChUaMobile || undefined,
-    "sec-ch-ua-platform": profile.secChUaPlatform || config.deepseekHeaders.secChUaPlatform || undefined,
-    "x-client-locale": profile.locale,
+    "sec-ch-ua": '"Chromium";v="154", "Brave";v="154", "Not A(Brand";v="99"',
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": '"Windows"',
+    "x-client-locale": "en_US",
     "x-client-bundle-id": profile.bundleId,
     "x-client-timezone-offset": profile.timezoneOffset,
     "x-client-version": profile.clientVersion,
     "x-client-platform": profile.platform,
+    "x-device-model": "",
+    "sec-gpc": "1",
     "accept-language": profile.acceptLanguage,
     ...extraHeaders
   });

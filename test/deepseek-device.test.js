@@ -6,6 +6,7 @@ import {
   createSimulatedClientProfile,
   generateClientDid,
   generateDeepseekDeviceId,
+  generateDeepseekDeviceIdFromBrowser,
   isClientDid,
   isDeepseekDeviceId,
   resolveDeepseekClientProfile
@@ -18,6 +19,7 @@ test("generated DeepSeek identifiers use the expected independent formats", () =
   assert.equal(isDeepseekDeviceId(loginDeviceId), true);
   assert.equal(isClientDid(clientDid), true);
   assert.notEqual(loginDeviceId, clientDid);
+  assert.equal(typeof generateDeepseekDeviceIdFromBrowser, "function");
 });
 
 test("new simulated profiles receive independent environment and device values", () => {

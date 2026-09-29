@@ -28,7 +28,7 @@ PoW 默认保护 `/chat/completion` 与 `/file/upload_file`。代理白名单不
 | 变量 | 默认值 |
 | --- | --- |
 | `DEEPSEEK_CLIENT_BUNDLE_ID` | `com.deepseek.chat` |
-| `DEEPSEEK_CLIENT_VERSION` | `2.3.0` |
+| `DEEPSEEK_CLIENT_VERSION` | `2.5.0` |
 | `DEEPSEEK_CLIENT_PLATFORM` | `web` |
 | `DEEPSEEK_CLIENT_LOCALE` | 空 |
 | `DEEPSEEK_TIMEZONE_OFFSET` | 空 |

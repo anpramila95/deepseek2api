@@ -1,7 +1,7 @@
 import { saveAccount } from "./account-service.js";
 import { buildDeepseekAccountForOwner } from "./auth-service.js";
 import { loginToDeepseek, fetchCurrentDeepseekUser } from "./deepseek-auth.js";
-import { resolveDeepseekClientProfile } from "./deepseek-device.js";
+import { resolveDeepseekClientProfile, generateDeepseekDeviceIdFromBrowser} from "./deepseek-device.js";
 import {
   disableDataOptimizationForAccount,
   reportClientSettingsForAccount
@@ -19,6 +19,9 @@ export async function importDeepseekAccountForOwner({
 }) {
   const maskedUser = maskIdentifier(loginValue);
   console.error(`[Account Import] Step 1/4: Starting account import for user "${maskedUser}" (owner: ${ownerId})`);
+
+  if (!deviceId) deviceId = await generateDeepseekDeviceIdFromBrowser(proxy);
+
 
   const resolvedProfile = resolveDeepseekClientProfile(deviceProfile ?? { deviceId });
   console.error(`[Account Import] Step 2/4: Device profile resolved. Logging in to DeepSeek...`);
@@ -274,6 +277,7 @@ export async function batchImportAccountsForOwner({ ownerId, rawInput, defaultPr
     const proxy = item.proxy || defaultProxy || "";
     const token = (item.token || item.user?.token || item.biz_data?.user?.token || "").trim();
 
+    const deviceId = await generateDeepseekDeviceIdFromBrowser(proxy);
     try {
       let saved = null;
       if (emailOrLogin && password) {
@@ -281,7 +285,8 @@ export async function batchImportAccountsForOwner({ ownerId, rawInput, defaultPr
           ownerId,
           loginValue: emailOrLogin,
           password,
-          proxy
+          proxy,
+          deviceId
         });
       } else if (token || (typeof item === "object" && (item.user || item.biz_data))) {
         saved = await importRawDeepseekAccountForOwner({

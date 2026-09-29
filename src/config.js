@@ -155,7 +155,7 @@ export const config = Object.freeze({
   ),
   deepseekHeaders: Object.freeze({
     clientBundleId: process.env.DEEPSEEK_CLIENT_BUNDLE_ID ?? "com.deepseek.chat",
-    clientVersion: process.env.DEEPSEEK_CLIENT_VERSION ?? "2.3.0",
+    clientVersion: process.env.DEEPSEEK_CLIENT_VERSION ?? "2.5.0",
     clientPlatform: process.env.DEEPSEEK_CLIENT_PLATFORM ?? "web",
     locale: process.env.DEEPSEEK_CLIENT_LOCALE ?? "",
     timezoneOffset: process.env.DEEPSEEK_TIMEZONE_OFFSET ?? "",
@@ -175,10 +175,10 @@ export const config = Object.freeze({
     sources: parseCsv(process.env.DEEPSEEK_PROFILE_SOURCES, ["chat-web"]),
     localeProfiles: parseJson(process.env.DEEPSEEK_PROFILE_LOCALE_PROFILES, [
       {
-        locale: "zh_CN",
-        browserLocale: "zh-CN",
-        acceptLanguage: "zh-CN,zh;q=0.9,en;q=0.8",
-        timezoneOffset: "28800"
+        locale: "en-US",
+        browserLocale: "en-US",
+        acceptLanguage: "en-US,en;q=0.9",
+        timezoneOffset: "25200"
       }
     ]),
     screenSizes: parseJson(process.env.DEEPSEEK_PROFILE_SCREEN_SIZES, [

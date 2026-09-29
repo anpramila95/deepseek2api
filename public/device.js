@@ -205,7 +205,7 @@ async function createDeviceProfile() {
     platform: "web",
     os: "web",
     bundleId: "com.deepseek.chat",
-    clientVersion: "2.3.0",
+    clientVersion: "2.5.0",
     locale,
     browserLocale,
     acceptLanguage,
